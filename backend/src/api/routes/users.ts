@@ -38,10 +38,6 @@ export default s.router(usersContract, {
   deletePersonalBests: {
     handler: async (r) => callController(UserController.clearPb)(r),
   },
-  optOutOfLeaderboards: {
-    handler: async (r) =>
-      callController(UserController.optOutOfLeaderboards)(r),
-  },
   addResultFilterPreset: {
     handler: async (r) =>
       callController(UserController.addResultFilterPreset)(r),

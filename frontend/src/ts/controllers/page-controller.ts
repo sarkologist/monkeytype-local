@@ -25,11 +25,6 @@ import Page, {
 } from "../pages/page";
 import { onDOMReady, qsa, qsr } from "../utils/dom";
 import * as Skeleton from "../utils/skeleton";
-import {
-  LeaderboardUrlParamsSchema,
-  readGetParameters,
-} from "../states/leaderboard-selection";
-import { configurationPromise as serverConfigurationPromise } from "../ape/server-configuration";
 
 type ChangeOptions = {
   force?: boolean;
@@ -54,19 +49,6 @@ const pages = {
   friends: Friends.page,
   404: Page404.page,
   accountSettings: PageAccountSettings.page,
-  leaderboards: solidPage("leaderboards", {
-    urlParamsSchema: LeaderboardUrlParamsSchema,
-    loadingOptions: {
-      style: "spinner",
-      loadingMode: () => "sync",
-      loadingPromise: async () => {
-        await serverConfigurationPromise;
-      },
-    },
-    beforeShow: async (options) => {
-      readGetParameters(options.urlParams);
-    },
-  }),
 };
 
 function updateOpenGraphUrl(): void {

@@ -12,7 +12,6 @@ export type PopupKey =
   | "addPasswordAuth"
   | "deleteAccount"
   | "resetAccount"
-  | "optOutOfLeaderboards"
   | "applyCustomFont"
   | "resetPersonalBests"
   | "resetSettings"
@@ -33,7 +32,6 @@ export const list: Record<PopupKey, SimpleModal | undefined> = {
   addPasswordAuth: undefined,
   deleteAccount: undefined,
   resetAccount: undefined,
-  optOutOfLeaderboards: undefined,
   applyCustomFont: undefined,
   resetPersonalBests: undefined,
   resetSettings: undefined,

@@ -130,16 +130,10 @@ function updateTabs(): void {
 }
 
 function updateAccountSections(): void {
-  pageElement.qs(".section.optOutOfLeaderboards .optedOut")?.hide();
-  pageElement.qs(".section.optOutOfLeaderboards .buttons")?.show();
   pageElement.qs(".section.setStreakHourOffset .info")?.hide();
   pageElement.qs(".section.setStreakHourOffset .buttons")?.show();
 
   const snapshot = getSnapshot();
-  if (snapshot?.lbOptOut === true) {
-    pageElement.qs(".section.optOutOfLeaderboards .optedOut")?.show();
-    pageElement.qs(".section.optOutOfLeaderboards .buttons")?.hide();
-  }
   if (snapshot?.streakHourOffset !== undefined) {
     pageElement.qs(".section.setStreakHourOffset .info")?.show();
     const sign = snapshot?.streakHourOffset > 0 ? "+" : "";
@@ -221,14 +215,6 @@ qs(".pageAccountSettings")?.onChild("click", "#deleteAccount", () => {
 qs(".pageAccountSettings")?.onChild("click", "#resetAccount", () => {
   showPopup("resetAccount");
 });
-
-qs(".pageAccountSettings")?.onChild(
-  "click",
-  "#optOutOfLeaderboardsButton",
-  () => {
-    showPopup("optOutOfLeaderboards");
-  },
-);
 
 qs(".pageAccountSettings")?.onChild("click", "#revokeAllTokens", () => {
   showPopup("revokeAllTokens");

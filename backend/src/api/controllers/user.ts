@@ -411,25 +411,6 @@ export async function clearPb(req: MonkeyRequest): Promise<MonkeyResponse> {
   return new MonkeyResponse("User's PB cleared", null);
 }
 
-export async function optOutOfLeaderboards(
-  req: MonkeyRequest,
-): Promise<MonkeyResponse> {
-  const { uid } = req.ctx.decodedToken;
-
-  await UserDAL.optOutOfLeaderboards(uid);
-  await purgeUserFromDailyLeaderboards(
-    uid,
-    req.ctx.configuration.dailyLeaderboards,
-  );
-  await purgeUserFromXpLeaderboards(
-    uid,
-    req.ctx.configuration.leaderboards.weeklyXp,
-  );
-  void addImportantLog("user_opted_out_of_leaderboards", "", uid);
-
-  return new MonkeyResponse("User opted out of leaderboards", null);
-}
-
 export async function checkName(
   req: MonkeyRequest<undefined, undefined, CheckNamePathParameters>,
 ): Promise<CheckNameResponse> {

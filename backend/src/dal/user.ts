@@ -213,20 +213,6 @@ export async function clearPb(uid: string): Promise<void> {
   );
 }
 
-export async function optOutOfLeaderboards(uid: string): Promise<void> {
-  await getUsersCollection().updateOne(
-    { uid },
-    {
-      $set: {
-        lbOptOut: true,
-        lbPersonalBests: {
-          time: {},
-        },
-      },
-    },
-  );
-}
-
 export async function updateQuoteRatings(
   uid: string,
   quoteRatings: UserQuoteRatings,
@@ -460,7 +446,7 @@ export async function updateLbMemory(
 
 export async function checkIfPb(
   uid: string,
-  user: Pick<DBUser, "personalBests" | "lbPersonalBests">,
+  user: Pick<DBUser, "personalBests">,
   result: Result,
 ): Promise<boolean> {
   const { mode } = result;
@@ -485,11 +471,7 @@ export async function checkIfPb(
     words: {},
     zen: {},
   };
-  user.lbPersonalBests ??= {
-    time: {},
-  };
-
-  const pb = checkAndUpdatePb(user.personalBests, user.lbPersonalBests, result);
+  const pb = checkAndUpdatePb(user.personalBests, undefined, result);
 
   if (!pb.isPb) return false;
 
@@ -498,12 +480,6 @@ export async function checkIfPb(
     { $set: { personalBests: pb.personalBests } },
   );
 
-  if (pb.lbPersonalBests) {
-    await getUsersCollection().updateOne(
-      { uid },
-      { $set: { lbPersonalBests: pb.lbPersonalBests } },
-    );
-  }
   return true;
 }
 

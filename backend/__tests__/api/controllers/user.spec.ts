@@ -1198,60 +1198,6 @@ describe("user controller test", () => {
       );
     });
   });
-  describe("opt out of leaderboard", () => {
-    const optOutOfLeaderboardsMock = vi.spyOn(UserDal, "optOutOfLeaderboards");
-    const purgeUserFromDailyLeaderboardsMock = vi.spyOn(
-      DailyLeaderboards,
-      "purgeUserFromDailyLeaderboards",
-    );
-    const addImportantLogMock = vi.spyOn(LogDal, "addImportantLog");
-
-    beforeEach(() => {
-      [
-        optOutOfLeaderboardsMock.mockClear(),
-        purgeUserFromDailyLeaderboardsMock,
-        addImportantLogMock,
-      ].forEach((it) => it.mockClear().mockResolvedValue());
-    });
-    it("should opt out", async () => {
-      //GIVEN
-
-      //WHEN
-      const { body } = await mockApp
-        .post("/users/optOutOfLeaderboards")
-        .set("Authorization", `Bearer ${uid}`)
-        .expect(200);
-
-      //THEN
-      expect(body).toEqual({
-        message: "User opted out of leaderboards",
-        data: null,
-      });
-
-      expect(optOutOfLeaderboardsMock).toHaveBeenCalledWith(uid);
-      expect(purgeUserFromDailyLeaderboardsMock).toHaveBeenCalledWith(
-        uid,
-        (await Configuration.getLiveConfiguration()).dailyLeaderboards,
-      );
-      expect(addImportantLogMock).toHaveBeenCalledWith(
-        "user_opted_out_of_leaderboards",
-        "",
-        uid,
-      );
-    });
-    // it("should fail with unknown properties", async () => {
-    //WHEN
-    // const { body } = await mockApp
-    //   .post("/users/optOutOfLeaderboards")
-    //   .set("Authorization", `Bearer ${uid}`)
-    //   .send({ extra: "value" });
-    //TODO.expect(422);
-    //THEN
-    /* TODO:
-        expect(body).toEqual({});
-        */
-    // });
-  });
   describe("update email", () => {
     const authUpdateEmailMock = vi.spyOn(AuthUtils, "updateUserEmail");
     const userUpdateEmailMock = vi.spyOn(UserDal, "updateEmail");

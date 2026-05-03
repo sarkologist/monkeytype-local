@@ -120,12 +120,6 @@ export const limits = {
     max: 60,
   },
 
-  // get public speed stats
-  publicStatsGet: {
-    window: "minute",
-    max: 60,
-  },
-
   // Results Routing
   resultsGet: {
     window: "hour",
@@ -224,11 +218,6 @@ export const limits = {
   userClearPB: {
     window: "hour",
     max: 60,
-  },
-
-  userOptOutOfLeaderboards: {
-    window: "hour",
-    max: 10,
   },
 
   userCustomFilterAdd: {

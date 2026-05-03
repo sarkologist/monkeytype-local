@@ -489,20 +489,6 @@ export const usersContract = c.router(
         rateLimit: "userClearPB",
       }),
     },
-    optOutOfLeaderboards: {
-      summary: "leaderboards opt out",
-      description: "Opt out of the leaderboards",
-      method: "POST",
-      path: "/optOutOfLeaderboards",
-      body: c.noBody(),
-      responses: {
-        200: MonkeyResponseSchema,
-      },
-      metadata: meta({
-        authenticationOptions: { requireFreshToken: true },
-        rateLimit: "userOptOutOfLeaderboards",
-      }),
-    },
     addResultFilterPreset: {
       summary: "add result filter preset",
       description: "Add a result filter preset",

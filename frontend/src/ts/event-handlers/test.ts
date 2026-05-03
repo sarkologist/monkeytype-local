@@ -10,8 +10,6 @@ import {
 import { showQuoteRateModal } from "../states/quote-rate";
 import { showQuoteReportModal } from "../states/quote-report";
 import * as PractiseWordsModal from "../modals/practise-words";
-import { navigate } from "../controllers/route-controller";
-import { getMode2 } from "../utils/misc";
 import { ConfigKey } from "@monkeytype/schemas/configs";
 import { ListsObjectKeys } from "../commandline/lists";
 import { qs } from "../utils/dom";
@@ -68,13 +66,4 @@ testPage?.onChild("click", "#practiseWordsButton", () => {
     return;
   }
   PractiseWordsModal.show();
-});
-
-qs(".pageTest #dailyLeaderboardRank")?.on("click", async () => {
-  void navigate(
-    `/leaderboards?type=daily&language=${Config.language}&mode2=${getMode2(
-      Config,
-      null,
-    )}&goToUserPage=true`,
-  );
 });

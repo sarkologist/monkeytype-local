@@ -4,7 +4,6 @@ import * as Configuration from "../../../src/init/configuration";
 import * as ResultDal from "../../../src/dal/result";
 import * as UserDal from "../../../src/dal/user";
 import * as LogsDal from "../../../src/dal/logs";
-import * as PublicDal from "../../../src/dal/public";
 import { ObjectId } from "mongodb";
 import { mockAuthenticateWithApeKey } from "../../__testData__/auth";
 import { enableRateLimitExpects } from "../../__testData__/rate-limit";
@@ -584,7 +583,6 @@ describe("result controller test", () => {
     const userIncrementXpMock = vi.spyOn(UserDal, "incrementXp");
     const userUpdateTypingStatsMock = vi.spyOn(UserDal, "updateTypingStats");
     const resultAddMock = vi.spyOn(ResultDal, "addResult");
-    const publicUpdateStatsMock = vi.spyOn(PublicDal, "updateStats");
 
     beforeEach(async () => {
       await enableResultsSaving(true);
@@ -598,7 +596,6 @@ describe("result controller test", () => {
         userIncrementXpMock,
         userUpdateTypingStatsMock,
         resultAddMock,
-        publicUpdateStatsMock,
       ].forEach((it) => it.mockClear());
 
       userGetMock.mockResolvedValue({ name: "bob" } as any);
@@ -675,10 +672,6 @@ describe("result controller test", () => {
         }),
       );
 
-      expect(publicUpdateStatsMock).toHaveBeenCalledWith(
-        4,
-        15.1 + 2 - 5, //duration + incompleteTestSeconds-afk
-      );
       expect(userIncrementXpMock).toHaveBeenCalledWith(uid, 0);
       expect(userUpdateTypingStatsMock).toHaveBeenCalledWith(
         uid,

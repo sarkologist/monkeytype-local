@@ -46,7 +46,6 @@ import { getAuthenticatedUser } from "../firebase";
 import * as ConnectionState from "../legacy-states/connection";
 import { highlight } from "../events/keymap";
 import * as LazyModeState from "../legacy-states/remember-lazy-mode";
-import Format from "../singletons/format";
 import { Mode } from "@monkeytype/schemas/shared";
 import {
   CompletedEvent,
@@ -187,6 +186,9 @@ export function restart(options = {} as RestartOptions): void {
   };
 
   options = { ...defaultOptions, ...options };
+  if (options.isQuickRestart && Config.mode !== "zen") {
+    options.withSameWordset = true;
+  }
   Strings.clearWordDirectionCache();
 
   const animationTime = options.noAnim ? 0 : Misc.applyReducedMotion(125);
@@ -1330,26 +1332,6 @@ async function saveResult(
     localDataToSave.isPb = true;
   } else {
     Result.showErrorCrownIfNeeded();
-  }
-
-  const dailyLeaderboardEl = document.querySelector(
-    "#result .stats .dailyLeaderboard",
-  ) as HTMLElement;
-
-  if (data.dailyLeaderboardRank === undefined) {
-    dailyLeaderboardEl.classList.add("hidden");
-  } else {
-    dailyLeaderboardEl.classList.remove("hidden");
-    dailyLeaderboardEl.style.maxWidth = "13rem";
-
-    animate(dailyLeaderboardEl, {
-      opacity: [0, 1],
-      duration: Misc.applyReducedMotion(250),
-    });
-
-    qs("#result .stats .dailyLeaderboard .bottom")?.setHtml(
-      Format.rank(data.dailyLeaderboardRank, { fallback: "" }),
-    );
   }
 
   qs("#retrySavingResultButton")?.hide();

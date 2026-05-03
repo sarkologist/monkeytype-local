@@ -15,7 +15,6 @@ import workers from "./workers";
 import Logger from "./utils/logger";
 import * as EmailClient from "./init/email-client";
 import { init as initFirebaseAdmin } from "./init/firebase-admin";
-import { createIndicies as leaderboardDbSetup } from "./dal/leaderboards";
 import { createIndicies as blocklistDbSetup } from "./dal/blocklist";
 import { createIndicies as connectionsDbSetup } from "./dal/connections";
 import { getErrorMessage } from "./utils/error";
@@ -70,9 +69,6 @@ async function bootServer(port: number): Promise<Server> {
     Logger.info("Starting cron jobs...");
     jobs.forEach((job) => job.start());
     Logger.success("Cron jobs started");
-
-    Logger.info("Setting up leaderboard indicies...");
-    await leaderboardDbSetup();
 
     Logger.info("Setting up blocklist indicies...");
     await blocklistDbSetup();

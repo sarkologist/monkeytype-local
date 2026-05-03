@@ -14,15 +14,6 @@ const commands: Command[] = [
     },
   },
   {
-    id: "viewLeaderboards",
-    display: "View Leaderboards",
-    alias: "navigate go to",
-    icon: "fa-crown",
-    exec: (): void => {
-      void navigate("/leaderboards");
-    },
-  },
-  {
     id: "viewAbout",
     display: "View About Page",
     alias: "navigate go to",

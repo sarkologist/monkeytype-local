@@ -285,56 +285,12 @@ export async function update(
 
   cachedCounts.delete(`${language}_${mode}_${mode2}`);
 
-  //update speedStats
-  const boundaries = [...Array(32).keys()].map((it) => it * 10);
-  const statsKey = `${language}_${mode}_${mode2}`;
-  const src = db.collection(lbCollectionName);
-  const histogram = src.aggregate(
-    [
-      {
-        $bucket: {
-          groupBy: "$wpm",
-          boundaries: boundaries,
-          default: "Other",
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: {
-            $arrayToObject: [[{ k: { $toString: "$_id" }, v: "$count" }]],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: "speedStatsHistogram", //we only expect one document with type=speedStats
-          [`${statsKey}`]: {
-            $mergeObjects: "$$ROOT",
-          },
-        },
-      },
-      {
-        $merge: {
-          into: "public",
-          on: "_id",
-          whenMatched: "merge",
-          whenNotMatched: "insert",
-        },
-      },
-    ],
-    { allowDiskUse: true },
-  );
-  const start3 = performance.now();
-  await histogram.toArray();
-  const end3 = performance.now();
-
   const timeToRunAggregate = (end1 - start1) / 1000;
   const timeToRunIndex = (end2 - start2) / 1000;
-  const timeToSaveHistogram = (end3 - start3) / 1000; // not sent to prometheus yet
 
   void addLog(
     `system_lb_update_${language}_${mode}_${mode2}`,
-    `Aggregate ${timeToRunAggregate}s, loop 0s, insert 0s, index ${timeToRunIndex}s, histogram ${timeToSaveHistogram}`,
+    `Aggregate ${timeToRunAggregate}s, loop 0s, insert 0s, index ${timeToRunIndex}s`,
   );
 
   setLeaderboard(language, mode, mode2, [

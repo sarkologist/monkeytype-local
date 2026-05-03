@@ -4,17 +4,12 @@ import { For, JSXElement, Show } from "solid-js";
 import { getConfig } from "../../config/store";
 import {
   getContributorsQueryOptions,
-  getSpeedHistogramQueryOptions,
   getSupportersQueryOptions,
-  getTypingStatsQueryOptions,
 } from "../../queries/public";
 import { getActivePage } from "../../states/core";
 import { showModal } from "../../states/modals";
-import { getTheme } from "../../states/theme";
-import { getNumberWithMagnitude } from "../../utils/numbers";
 import AsyncContent from "../common/AsyncContent";
 import { Button } from "../common/Button";
-import { ChartJs } from "../common/ChartJs";
 import { Fa } from "../common/Fa";
 import { H2, H3 } from "../common/Headers";
 import { CommandlineHotkey } from "../hotkeys/CommandlineHotkey";
@@ -33,24 +28,6 @@ export function AboutPage(): JSXElement {
     enabled: isOpen(),
   }));
 
-  const typingStats = useQuery(() => ({
-    ...getTypingStatsQueryOptions(),
-    enabled: isOpen(),
-  }));
-
-  const speedHistogram = useQuery(() => ({
-    ...getSpeedHistogramQueryOptions(),
-    enabled: isOpen(),
-  }));
-
-  const numberOfHistogramRecords = (data?: { y: number }[]) => {
-    if (data === undefined) return "";
-    const sum = getNumberWithMagnitude(
-      data.reduce((sum, it) => (sum += it.y), 0),
-    );
-    return `${sum.roundedTo2} ${sum.orderOfMagnitude}`;
-  };
-
   return (
     <div class="content-grid grid gap-8">
       <section class="text-center text-sub">
@@ -60,127 +37,6 @@ export function AboutPage(): JSXElement {
         <a href="#contributors_title">expanded</a> by many awesome people.
         <br />
         Launched on 15th of May, 2020.
-      </section>
-      <section>
-        <AsyncContent
-          alwaysShowContent
-          queries={{ typingStats }}
-          errorMessage="Failed to get global typing stats"
-        >
-          {({ typingStatsData }) => (
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <For
-                each={
-                  [
-                    [
-                      "total tests started",
-                      () => typingStatsData()?.testsStarted,
-                    ],
-                    ["total typing time", () => typingStatsData()?.timeTyping],
-                    [
-                      "total tests completed",
-                      () => typingStatsData()?.testsCompleted,
-                    ],
-                  ] as const
-                }
-              >
-                {([title, stat]) => (
-                  <div class="text-center">
-                    <div class="text-sub">{title}</div>
-                    <div class="text-5xl">{stat()?.text ?? "-"}</div>
-                    <div class="text-xl">{stat()?.subText ?? "-"}</div>
-                  </div>
-                )}
-              </For>
-            </div>
-          )}
-        </AsyncContent>
-      </section>
-      <section class="h-48 w-full">
-        <AsyncContent
-          alwaysShowContent
-          queries={{ speedHistogram }}
-          errorMessage="Failed to get global speed stats for histogram"
-        >
-          {({ speedHistogramData }) => (
-            <>
-              <ChartJs
-                type="bar"
-                data={{
-                  labels: speedHistogramData()?.labels ?? [],
-                  datasets: [
-                    {
-                      yAxisID: "count",
-                      label: "Users",
-                      data: speedHistogramData()?.data ?? [],
-                      minBarLength: 2,
-                      backgroundColor: getTheme().main,
-                      borderColor: getTheme().main,
-                    },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  hover: {
-                    mode: "nearest",
-                    intersect: false,
-                  },
-                  scales: {
-                    x: {
-                      axis: "x",
-                      bounds: "ticks",
-                      display: true,
-                      title: {
-                        display: false,
-                        text: "Bucket",
-                      },
-                      offset: true,
-                    },
-                    count: {
-                      axis: "y",
-                      beginAtZero: true,
-                      min: 0,
-                      ticks: {
-                        autoSkip: true,
-                        autoSkipPadding: 20,
-                        stepSize: 10,
-                      },
-                      display: true,
-                      title: {
-                        display: true,
-                        text: "Users",
-                      },
-                    },
-                  },
-                  plugins: {
-                    annotation: {
-                      annotations: [],
-                    },
-                    tooltip: {
-                      animation: { duration: 250 },
-                      intersect: false,
-                      mode: "index",
-                      callbacks: {
-                        afterLabel: (context) => {
-                          return (
-                            (context.raw as { topPercentage?: string })
-                              .topPercentage ?? ""
-                          );
-                        },
-                      },
-                    },
-                  },
-                }}
-              />
-              <div class="text-right text-xs text-sub">
-                distribution of time 60 leaderboard results (wpm) <br />
-                {numberOfHistogramRecords(speedHistogramData()?.data)} total
-                results
-              </div>
-            </>
-          )}
-        </AsyncContent>
       </section>
       <section>
         <H2 fa={{ icon: "fa-info-circle" }} text="about" />
@@ -271,12 +127,11 @@ export function AboutPage(): JSXElement {
         <H3 fa={{ icon: "fa-chart-area" }} text="results screen" />
         <p>
           After completing a test you will be able to see your wpm, raw wpm,
-          accuracy, character stats, test length, leaderboards info and test
-          info (you can hover over some values to get floating point numbers).
-          You can also see a graph of your wpm and raw over the duration of the
-          test. Remember that the wpm line is a global average, while the raw
-          wpm line is a local, momentary value (meaning if you stop, the value
-          is 0).
+          accuracy, character stats, test length and test info (you can hover
+          over some values to get floating point numbers). You can also see a
+          graph of your wpm and raw over the duration of the test. The raw wpm
+          line is a local, momentary value (meaning if you stop, the value is
+          0).
         </p>
       </section>
       <section>

@@ -1,6 +1,5 @@
 import { contract } from "@monkeytype/contracts/index";
 import psas from "./psas";
-import publicStats from "./public";
 import users from "./users";
 import { join } from "path";
 import quotes from "./quotes";
@@ -14,7 +13,6 @@ import dev from "./dev";
 import configs from "./configs";
 import configuration from "./configuration";
 import { version } from "../../version";
-import leaderboards from "./leaderboards";
 import connections from "./connections";
 import addSwaggerMiddlewares from "./swagger";
 import { MonkeyResponse } from "../../utils/monkey-response";
@@ -52,8 +50,6 @@ const router = s.router(contract, {
   configs,
   presets,
   psas,
-  public: publicStats,
-  leaderboards,
   results,
   configuration,
   dev,

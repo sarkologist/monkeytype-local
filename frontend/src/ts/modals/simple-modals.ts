@@ -753,52 +753,6 @@ list.resetAccount = new SimpleModal({
   },
 });
 
-list.optOutOfLeaderboards = new SimpleModal({
-  id: "optOutOfLeaderboards",
-  title: "Opt out of leaderboards",
-  inputs: [
-    {
-      placeholder: "password",
-      type: "password",
-      initVal: "",
-    },
-  ],
-  text: "Are you sure you want to opt out of leaderboards?",
-  buttonText: "opt out",
-  execFn: async (_thisPopup, password): Promise<ExecReturn> => {
-    const reauth = await reauthenticate({ password });
-    if (reauth.status !== "success") {
-      return {
-        status: reauth.status,
-        message: reauth.message,
-      };
-    }
-
-    const response = await Ape.users.optOutOfLeaderboards();
-    if (response.status !== 200) {
-      return {
-        status: "error",
-        message: "Failed to opt out",
-        notificationOptions: { response },
-      };
-    }
-
-    reloadAfter(3);
-
-    return {
-      status: "success",
-      message: "Leaderboards opt out successful",
-    };
-  },
-  beforeInitFn: (thisPopup): void => {
-    if (!isAuthenticated()) return;
-    if (!isUsingPasswordAuthentication()) {
-      thisPopup.inputs = [];
-      thisPopup.buttonText = "reauthenticate to opt out";
-    }
-  },
-});
-
 list.applyCustomFont = new SimpleModal({
   id: "applyCustomFont",
   title: "Custom font",
