@@ -19,21 +19,11 @@ export function renderResult(widerThanBreakpoint: boolean): void {
   if (widerThanBreakpoint) {
     //@ts-expect-error 3rd party ad code
     // oxlint-disable-next-line no-unsafe-call
-    window.egAps.render([
-      "ad-result",
-      "ad-vertical-left",
-      "ad-vertical-right",
-      "ad-footer",
-    ]);
+    window.egAps.render(["ad-vertical-left", "ad-vertical-right"]);
   } else {
     //@ts-expect-error 3rd party ad code
     // oxlint-disable-next-line no-unsafe-call
-    window.egAps.render([
-      "ad-result-small",
-      "ad-vertical-left",
-      "ad-vertical-right",
-      "ad-footer-small",
-    ]);
+    window.egAps.render(["ad-vertical-left", "ad-vertical-right"]);
   }
 }
 

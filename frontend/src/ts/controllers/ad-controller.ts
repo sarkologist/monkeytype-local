@@ -57,12 +57,9 @@ function init(): void {
 function removeAll(): void {
   removeSellout();
   removeOn();
-  removeResult();
 }
 
 function removeSellout(): void {
-  qs("#ad-footer-wrapper")?.remove();
-  qs("#ad-footer-small-wrapper")?.remove();
   qs("#ad-settings-1-wrapper")?.remove();
   qs("#ad-settings-1-small-wrapper")?.remove();
   qs("#ad-settings-2-wrapper")?.remove();
@@ -78,11 +75,6 @@ function removeSellout(): void {
 function removeOn(): void {
   qs("#ad-vertical-right-wrapper")?.remove();
   qs("#ad-vertical-left-wrapper")?.remove();
-}
-
-function removeResult(): void {
-  qs("#ad-result-wrapper")?.remove();
-  qs("#ad-result-small-wrapper")?.remove();
 }
 
 function updateBreakpoint(noReinstate = false): void {
@@ -207,31 +199,7 @@ export async function renderResult(): Promise<void> {
   await checkAdblock();
   await checkCookieblocker();
 
-  if (adBlock) {
-    qs("#ad-result-wrapper .iconAndText .text")?.setHtml(`
-    Using an ad blocker? No worries
-    <div class="smalltext">
-      We understand ads can be annoying
-      <br />
-      You can
-      <i>disable all ads</i>
-      in the settings
-    </div>
-    `);
-    return;
-  }
-
-  if (cookieBlocker) {
-    qs("#ad-result-wrapper .iconAndText .text")?.setHtml(`
-    Ads not working? Ooops
-    <div class="smalltext">
-      You may have a cookie popup blocker enabled - ads will not show without your consent
-      <br />
-      You can also 
-      <i>disable all ads</i>
-      in the settings if you wish
-    </div>
-    `);
+  if (adBlock || cookieBlocker) {
     return;
   }
 
@@ -246,13 +214,9 @@ export function updateFooterAndVerticalAds(visible: boolean): void {
   if (visible) {
     qs("#ad-vertical-left-wrapper")?.removeClass("testPage");
     qs("#ad-vertical-right-wrapper")?.removeClass("testPage");
-    qs("#ad-footer-wrapper")?.removeClass("testPage");
-    qs("#ad-footer-small-wrapper")?.removeClass("testPage");
   } else {
     qs("#ad-vertical-left-wrapper")?.addClass("testPage");
     qs("#ad-vertical-right-wrapper")?.addClass("testPage");
-    qs("#ad-footer-wrapper")?.addClass("testPage");
-    qs("#ad-footer-small-wrapper")?.addClass("testPage");
   }
 }
 
@@ -274,8 +238,6 @@ export function destroyResult(): void {
   if (choice === "pw") {
     PW.destroyAll();
   }
-  // $("#ad-result-wrapper").empty();
-  // $("#ad-result-small-wrapper").empty();
 }
 
 const debouncedBreakpointUpdate = debounce(500, updateBreakpoint);
@@ -312,12 +274,3 @@ onDOMReady(() => {
   updateBreakpoint(true);
   updateBreakpoint2();
 });
-
-window.onerror = function (error): void {
-  //@ts-expect-error ---
-  if (choice === "eg") {
-    if (typeof error === "string" && error.startsWith("EG APS")) {
-      qs("#ad-result-wrapper .iconAndText")?.addClass("withLeft");
-    }
-  }
-};

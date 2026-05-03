@@ -8,25 +8,8 @@ import { getActivePage } from "../states/core";
 import * as TestState from "../test/test-state";
 
 // Step 1: Create the Ramp Object, NOTE: selector id needed for tagged units only
-const resultUnits = [
-  {
-    type: "leaderboard_atf",
-    selectorId: "ad-result-wrapper",
-  },
-  {
-    type: "med_rect_btf",
-    selectorId: "ad-result-small-wrapper",
-  },
-];
+const resultUnits = [];
 const onUnits = [
-  {
-    type: "leaderboard_atf",
-    selectorId: "ad-result-wrapper",
-  },
-  {
-    type: "med_rect_btf",
-    selectorId: "ad-result-small-wrapper",
-  },
   {
     type: "sky_btf", //160x600
     selectorId: "ad-vertical-right-wrapper",
@@ -38,28 +21,12 @@ const onUnits = [
 ];
 const selloutUnits = [
   {
-    type: "leaderboard_atf",
-    selectorId: "ad-result-wrapper",
-  },
-  {
-    type: "med_rect_btf",
-    selectorId: "ad-result-small-wrapper",
-  },
-  {
     type: "sky_btf", //160x600
     selectorId: "ad-vertical-right-wrapper",
   },
   {
     type: "sky_btf", //160x600
     selectorId: "ad-vertical-left-wrapper",
-  },
-  {
-    type: "leaderboard_btf",
-    selectorId: "ad-footer-wrapper",
-  },
-  {
-    type: "med_rect_btf",
-    selectorId: "ad-footer-small-wrapper",
   },
   {
     type: "leaderboard_btf",

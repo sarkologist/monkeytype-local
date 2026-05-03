@@ -133,4 +133,6 @@ frontend/static/webfonts-preview
 .turbo
 frontend/.env.sentry-build-plugin
 .claude/worktrees
+.codex/
+frontend/firebase-export-*/
 1024MiB
