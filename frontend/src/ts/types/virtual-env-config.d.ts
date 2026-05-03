@@ -3,6 +3,8 @@ export type EnvConfig = {
   isDevelopment: boolean;
   clientVersion: string;
   recaptchaSiteKey: string;
+  firebaseAuthEmulatorUrl: string | undefined;
+  captchaBypassEnabled: boolean;
   quickLoginEmail: string | undefined;
   quickLoginPassword: string | undefined;
 };

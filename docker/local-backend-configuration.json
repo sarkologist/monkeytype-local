@@ -1,0 +1,24 @@
+{
+  "configuration": {
+    "results": {
+      "savingEnabled": true,
+      "objectHashCheckEnabled": false,
+      "filterPresets": {
+        "enabled": true,
+        "maxPresetsPerUser": 10
+      }
+    },
+    "users": {
+      "signUp": true,
+      "profiles": {
+        "enabled": true
+      }
+    },
+    "dailyLeaderboards": {
+      "enabled": false
+    },
+    "leaderboards": {
+      "minTimeTyping": 0
+    }
+  }
+}

@@ -21,7 +21,9 @@ import {
   onAuthStateChanged,
   indexedDBLocalPersistence,
   getAdditionalUserInfo,
+  connectAuthEmulator,
 } from "firebase/auth";
+import { envConfig } from "virtual:env-config";
 import { promiseWithResolvers } from "./utils/misc";
 import { isDevEnvironment } from "./utils/env";
 import { createErrorMessage } from "./utils/error";
@@ -62,6 +64,11 @@ export async function init(callback: ReadyCallback): Promise<void> {
     readyCallback = callback;
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     Auth = getAuth(app);
+    if (envConfig.firebaseAuthEmulatorUrl !== undefined) {
+      connectAuthEmulator(Auth, envConfig.firebaseAuthEmulatorUrl, {
+        disableWarnings: true,
+      });
+    }
 
     const rememberMe =
       window.localStorage.getItem("firebasePersistence") === "LOCAL";

@@ -11,6 +11,14 @@ const SERVICE_ACCOUNT_PATH = path.join(
 );
 
 export function init(): void {
+  if (process.env["FIREBASE_AUTH_EMULATOR_HOST"] !== undefined) {
+    admin.initializeApp({
+      projectId: process.env["FIREBASE_PROJECT_ID"] ?? "monkeytype-local",
+    });
+    Logger.warning("Firebase Auth emulator enabled");
+    return;
+  }
+
   if (!existsSync(SERVICE_ACCOUNT_PATH)) {
     if (isDevEnvironment()) {
       Logger.warning(

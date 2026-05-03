@@ -7,6 +7,7 @@ import { authPromise } from "./firebase";
 import { animate } from "animejs";
 import { onDOMReady, qs } from "./utils/dom";
 import { isDevEnvironment } from "./utils/env";
+import { envConfig } from "virtual:env-config";
 
 onDOMReady(async () => {
   await configLoadPromise;
@@ -30,7 +31,7 @@ onDOMReady(async () => {
 
   MonkeyPower.init();
 
-  if (isDevEnvironment()) {
+  if (isDevEnvironment() || envConfig.firebaseAuthEmulatorUrl !== undefined) {
     void navigator.serviceWorker
       .getRegistrations()
       .then(function (registrations) {

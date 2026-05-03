@@ -30,6 +30,8 @@ export function envConfig(options: {
           ),
           clientVersion: options.clientVersion,
           recaptchaSiteKey: "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
+          firebaseAuthEmulatorUrl: options.env["FIREBASE_AUTH_EMULATOR_URL"],
+          captchaBypassEnabled: options.env["BYPASS_CAPTCHA"] === "true",
           quickLoginEmail: options.env["QUICK_LOGIN_EMAIL"],
           quickLoginPassword: options.env["QUICK_LOGIN_PASSWORD"],
         };
@@ -41,6 +43,8 @@ export function envConfig(options: {
             "https://api.monkeytype.com",
           ),
           recaptchaSiteKey: options.env["RECAPTCHA_SITE_KEY"] ?? "",
+          firebaseAuthEmulatorUrl: options.env["FIREBASE_AUTH_EMULATOR_URL"],
+          captchaBypassEnabled: options.env["BYPASS_CAPTCHA"] === "true",
           quickLoginEmail: undefined,
           quickLoginPassword: undefined,
           clientVersion: options.clientVersion,

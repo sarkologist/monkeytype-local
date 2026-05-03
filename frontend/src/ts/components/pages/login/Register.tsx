@@ -5,6 +5,7 @@ import {
 } from "@monkeytype/schemas/users";
 import { createForm } from "@tanstack/solid-form";
 import { JSXElement } from "solid-js";
+import { envConfig } from "virtual:env-config";
 import { z } from "zod";
 
 import Ape from "../../../ape";
@@ -89,7 +90,9 @@ export function Register(): JSXElement {
     },
     onSubmit: async ({ value }) => {
       disableLoginPageInputs();
-      const captchaToken = await showRegisterCaptchaModal();
+      const captchaToken = envConfig.captchaBypassEnabled
+        ? "local-captcha-bypass"
+        : await showRegisterCaptchaModal();
       if (captchaToken === undefined || captchaToken === "") {
         showErrorNotification("Please complete the captcha");
         enableLoginPageInputs();

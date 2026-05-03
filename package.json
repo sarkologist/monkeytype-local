@@ -35,6 +35,8 @@
     "start": "turbo run start",
     "start-be": "turbo run start --filter @monkeytype/backend",
     "start-fe": "turbo run start --filter @monkeytype/frontend",
+    "local:start": "bash scripts/monkeytype-local-start.sh",
+    "local:stop": "bash scripts/monkeytype-local-stop.sh",
     "docker": "cd backend && npm run docker",
     "audit-fe": "cd frontend && npm run audit",
     "preview-fe": "monkeytype-release --preview-fe",

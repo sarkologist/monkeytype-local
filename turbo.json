@@ -50,12 +50,24 @@
     },
     "@monkeytype/frontend#build": {
       "dependsOn": ["^build"],
-      "env": ["BACKEND_URL", "RECAPTCHA_SITE_KEY", "SENTRY"],
+      "env": [
+        "BACKEND_URL",
+        "RECAPTCHA_SITE_KEY",
+        "SENTRY",
+        "FIREBASE_AUTH_EMULATOR_URL",
+        "BYPASS_CAPTCHA"
+      ],
       "outputs": ["dist/**"]
     },
     "@monkeytype/frontend#dev": {
       "dependsOn": ["^build"],
-      "env": ["BACKEND_URL", "RECAPTCHA_SITE_KEY", "SERVER_OPEN"],
+      "env": [
+        "BACKEND_URL",
+        "RECAPTCHA_SITE_KEY",
+        "SERVER_OPEN",
+        "FIREBASE_AUTH_EMULATOR_URL",
+        "BYPASS_CAPTCHA"
+      ],
       "persistent": true
     },
     "@monkeytype/backend#dev": {
