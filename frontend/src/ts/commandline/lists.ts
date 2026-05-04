@@ -510,13 +510,7 @@ function buildSingleListCommands(
       const singleListDisplayNoIcon =
         parentCommandDisplay + " " + command.display;
 
-      let newAlias: string | undefined = undefined;
-
-      if ((parentCommand.alias ?? "") || (command.alias ?? "")) {
-        newAlias = [parentCommand.alias, command.alias]
-          .filter(Boolean)
-          .join(" ");
-      }
+      const newAlias: string | undefined = command.alias;
 
       const newCommand = {
         ...command,
