@@ -957,7 +957,10 @@ function buildCompletedEvent(
 
   if (completedEvent.mode !== "custom") delete completedEvent.customText;
   if (completedEvent.mode !== "quote") delete completedEvent.quoteLength;
-  if (completedEvent.practiceStats?.words.length === 0) {
+  if (
+    completedEvent.practiceStats === undefined ||
+    completedEvent.practiceStats.words.length === 0
+  ) {
     delete completedEvent.practiceStats;
   }
 
