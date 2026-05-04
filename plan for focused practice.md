@@ -15,14 +15,45 @@ Persist enough per-result typing detail to build long-term weak-word and weak-co
 
 ## Current state
 
+- Status: core implementation is in place; test coverage is partial.
 - Persisted results are aggregate: wpm, raw, acc, charStats, chartData, key timing summaries.
 - Frontend transient data is richer: target words, typed input, missedWords, burstHistory, errorHistory.
 - Existing result-screen practice already uses transient missed words, missed biwords, and slow words.
 - Long-term focus needs a compact persisted aggregate, not full input histories.
 
+## Agent instructions
+
+- After implementing any focused-practice change, update this file and `focused practice design decisions.md`.
+- Keep status/checklists current: mark what shipped, what changed, and what remains.
+
+## Implementation status
+
+Implemented:
+
+- `CompletedEvent.practiceStats` schema and bounded payload entries.
+- `GET /users/practiceStats` and `POST /users/practiceStats` contracts/routes/controllers.
+- `userPracticeStats` DAL with lazy decay, weighted updates, clamped weight, and focus-item scoring.
+- Normal result save updates practice stats and does not store `practiceStats` on result docs.
+- Repeated tests can submit stats-only updates without inserting normal results.
+- Frontend collector builds word/biword aggregates from generated `time`/`words` tests.
+- Collection skips punctuation, numbers, word-mutating funboxes, and focused-practice sessions.
+- Repeated-test weight setting exists with default `0.25` and schema range `0..1`.
+- Focused-practice generator fetches focus items, builds custom-mode pipe-delimited shuffled text, adds filler, and marks the session active.
+- Result-screen commandline entry point exists as `focused practice`.
+- Global commandline entry point exists as `Focused practice` because focused practice uses historical data, not the latest result.
+- Backend DAL tests cover repeated-key increments, weight scaling/clamping, decay, and scoring.
+
+Not implemented / still needed:
+
+- Frontend unit tests for collector eligibility, weighted repeated tests, disabled repeated contribution, focused-practice exclusion, word aggregation, and biword aggregation.
+- Backend/controller or integration tests proving normal result save updates aggregates and stats-only updates insert no result.
+- Explicit test that `practiceStats` is omitted from persisted result documents.
+- Contract/schema tests for bounded `practiceStats` and focus endpoint response.
+- Opportunistic pruning for tiny/old `userPracticeStats` docs.
+
 ## Data model
 
-Add a backend collection, not a large user-document field.
+Backend collection exists, not a large user-document field.
 
 Collection: `userPracticeStats`
 
@@ -245,6 +276,7 @@ Suggested custom text:
 Add low-blast-radius entry points first:
 
 - result screen command: focused practice
+- global commandline command: Focused practice
 - commandline list item near existing practice words actions
 
 If user has insufficient data:
@@ -263,50 +295,46 @@ Settings:
 
 ## Implementation steps
 
-1. Add schemas for `CompletedEventPracticeStats` and API response.
-2. Add repeated-test contribution setting.
-3. Add frontend collector near result completion.
-4. Add focused-practice session flag so generated practice results are excluded from collection.
-5. Add DAL collection helpers: update aggregates with lazy decay, query focus items.
-6. Call aggregate update during normal result save after validation, before/near normal result insert.
-7. Add stats-only update path for repeated tests so no result is inserted.
-8. Add GET endpoint for focus items.
-9. Add frontend generator that fetches focus items and starts custom mode.
-10. Add commandline/result-screen entry point.
-11. Add tests.
+1. [x] Add schemas for `CompletedEventPracticeStats` and API response.
+2. [x] Add repeated-test contribution setting.
+3. [x] Add frontend collector near result completion.
+4. [x] Add focused-practice session flag so generated practice results are excluded from collection.
+5. [x] Add DAL collection helpers: update aggregates with lazy decay, query focus items.
+6. [x] Call aggregate update during normal result save after validation, before/near normal result insert.
+7. [x] Add stats-only update path for repeated tests so no result is inserted.
+8. [x] Add GET endpoint for focus items.
+9. [x] Add frontend generator that fetches focus items and starts custom mode.
+10. [x] Add commandline/result-screen entry points.
+11. [ ] Add remaining tests.
 
 ## Tests
 
 Frontend:
 
-- collector includes only generated wordlist tests
-- repeated generated tests emit weighted practiceStats when setting > 0
-- repeated generated tests emit no practiceStats when setting is 0
-- custom/focused practice does not emit practiceStats
-- missed and slow words aggregate correctly
-- biwords use previous + current target words
+- [ ] collector includes only generated wordlist tests
+- [ ] repeated generated tests emit weighted practiceStats when setting > 0
+- [ ] repeated generated tests emit no practiceStats when setting is 0
+- [ ] custom/focused practice does not emit practiceStats
+- [ ] missed and slow words aggregate correctly
+- [ ] biwords use previous + current target words
 
 Backend:
 
-- result save updates aggregate docs
-- repeated stats-only update updates aggregate docs but inserts no result
-- repeated saves increment same keys
-- payload weight scales attempts, misses, burstSum, and burstCount
-- payload weight is clamped to 0-1
-- decay is applied before increment
-- query returns scored top words/biwords
-- practiceStats is not persisted on result documents
+- [ ] result save updates aggregate docs
+- [ ] repeated stats-only update updates aggregate docs but inserts no result
+- [x] repeated saves increment same keys
+- [x] payload weight scales attempts, misses, burstSum, and burstCount
+- [x] payload weight is clamped to 0-1
+- [x] decay is applied before increment
+- [x] query returns scored top words/biwords
+- [ ] practiceStats is not persisted on result documents
 
 Contract/schema:
 
-- completed event accepts bounded optional practiceStats
-- focus endpoint validates response
+- [ ] completed event accepts bounded optional practiceStats
+- [ ] focus endpoint validates response
 
 ## Open questions
 
-- Exact half-life: start with 30 days?
-- Should funboxes that only change visuals still collect stats?
-- Should biword miss count mean current word missed, either word missed, or combo typed incorrectly?
-- Should filler words come from current language top words or random active wordlist?
-- Exact repeated-test weight range/step: 0-1 by 0.05?
-- Should repeated stats-only updates reuse result save rate limit or get a stricter one?
+- Exact repeated-test UI step size is not documented in the plan.
+- Stats-only update rate-limit behavior still needs explicit confirmation/documentation.

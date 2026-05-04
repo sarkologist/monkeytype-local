@@ -1,5 +1,7 @@
 # Focused practice design decisions
 
+Agent note: after implementing any focused-practice change, update this file and `plan for focused practice.md`.
+
 - Stats live in `userPracticeStats`, not user docs, to keep user reads small.
 - `practiceStats` is accepted on `CompletedEvent` but omitted by `buildDbResult`, so normal result docs stay unchanged.
 - Collection key is `{ uid, language, type, key }`; no buckets for mode, punctuation, numbers, or mode2.
@@ -13,4 +15,5 @@
 - Scoring uses miss rate plus slow-burst score against the user's language baseline.
 - Query returns top 30 words and top 30 biwords, enough for generation without exposing the whole table.
 - Filler comes from the active language's first 100 words, capped around 30% of focused items.
-- Entry point is the existing result-screen practice command subgroup as `focused`.
+- Entry points are the global commandline `Focused practice` command and the existing result-screen practice command subgroup as `focused`.
+- The global entry point is always visible; insufficient historical data is handled after execution with a notice.
