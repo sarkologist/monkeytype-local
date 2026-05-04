@@ -10,6 +10,19 @@ FIREBASE_CONFIG="$LOCAL_DIR/firebase.json"
 
 mkdir -p "$PID_DIR" "$LOG_DIR" "$FIREBASE_DATA_DIR" "$ROOT/backend/src/credentials"
 
+wait_for_http_shutdown() {
+  local name="$1"
+  local url="$2"
+  for _ in {1..80}; do
+    if ! curl -sS "$url" >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.25
+  done
+  echo "$name did not stop."
+  exit 1
+}
+
 if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   # shellcheck source=/dev/null
   source "$HOME/.nvm/nvm.sh"
@@ -22,6 +35,12 @@ if ! command -v tmux >/dev/null 2>&1; then
 fi
 
 "$ROOT/scripts/monkeytype-local-stop.sh" >/dev/null || true
+wait_for_http_shutdown "Firebase Auth emulator" "http://127.0.0.1:9099/"
+wait_for_http_shutdown "Firebase emulator hub" "http://127.0.0.1:4400/"
+
+: > "$LOG_DIR/firebase-auth.log"
+: > "$LOG_DIR/backend.log"
+: > "$LOG_DIR/frontend.log"
 
 if [[ ! -f "$ROOT/backend/.env" ]]; then
   cp "$ROOT/backend/example.env" "$ROOT/backend/.env"
@@ -102,7 +121,22 @@ wait_for_url() {
   exit 1
 }
 
-wait_for_url "Firebase Auth emulator" "http://127.0.0.1:9099/" "$LOG_DIR/firebase-auth.log"
+wait_for_http_response() {
+  local name="$1"
+  local url="$2"
+  local log_file="$3"
+  for _ in {1..80}; do
+    if curl -sS "$url" >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.25
+  done
+  echo "$name did not start. Last log lines:"
+  tail -n 80 "$log_file" || true
+  exit 1
+}
+
+wait_for_http_response "Firebase Auth emulator" "http://127.0.0.1:9099/" "$LOG_DIR/firebase-auth.log"
 wait_for_url "Backend" "http://127.0.0.1:5005/configuration" "$LOG_DIR/backend.log"
 wait_for_url "Frontend" "http://127.0.0.1:3000/" "$LOG_DIR/frontend.log"
 
