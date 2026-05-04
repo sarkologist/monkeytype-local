@@ -29,6 +29,8 @@ import {
 } from "../states/notifications";
 import * as VideoAdPopup from "../popups/video-ad-popup";
 import * as TestStats from "../test/test-stats";
+import * as TestLogic from "../test/test-logic";
+import * as FocusedPractice from "../test/focused-practice";
 import { Command, CommandsSubgroup } from "./types";
 import { buildCommandForConfigKey } from "./util";
 import { CommandlineConfigMetadataObject } from "./commandline-metadata";
@@ -90,6 +92,17 @@ export const commands: CommandsSubgroup = {
         showModal("QuoteSearch");
       },
       shouldFocusTestUI: false,
+    },
+    {
+      id: "focusedPractice",
+      display: "Focused practice",
+      icon: "fa-bullseye",
+      alias: "focus practice words",
+      exec: (): void => {
+        void FocusedPractice.init().then((started) => {
+          if (started) TestLogic.restart({ practiseMissed: true });
+        });
+      },
     },
     ...QuoteFavoriteCommands,
     ...BailOutCommands,

@@ -49,7 +49,8 @@ const practiceSubgroup: CommandsSubgroup = {
     },
     {
       id: "focusedPractice",
-      display: "focused",
+      display: "focused practice",
+      alias: "focus",
       exec: (): void => {
         void FocusedPractice.init().then((started) => {
           if (started) TestLogic.restart({ practiseMissed: true });
@@ -99,6 +100,7 @@ const commands: Command[] = [
   {
     id: "practiseWords",
     display: "Practice words...",
+    alias: "missed slow focused focus custom",
     icon: "fa-exclamation-triangle",
     subgroup: practiceSubgroup,
     available: (): boolean => {
