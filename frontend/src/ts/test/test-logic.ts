@@ -189,7 +189,11 @@ export function restart(options = {} as RestartOptions): void {
   };
 
   options = { ...defaultOptions, ...options };
-  if (options.isQuickRestart && Config.mode !== "zen") {
+  if (
+    options.isQuickRestart &&
+    Config.mode !== "zen" &&
+    !FocusedPractice.isFocusedPracticeActive()
+  ) {
     options.withSameWordset = true;
   }
   Strings.clearWordDirectionCache();
