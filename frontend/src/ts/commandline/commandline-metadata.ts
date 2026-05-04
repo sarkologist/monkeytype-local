@@ -498,6 +498,11 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
       inputValueConvert: Number,
     },
   },
+  focusedPracticeWeight: {
+    input: {
+      inputValueConvert: Number,
+    },
+  },
   paceCaretStyle: {
     subgroup: {
       options: "fromSchema",

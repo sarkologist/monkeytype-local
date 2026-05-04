@@ -154,6 +154,13 @@ async function initGroups(): Promise<void> {
       validation: { schema: true, inputValueConvert: Number },
     },
   );
+  groups["focusedPracticeWeight"] = new SettingsGroup(
+    "focusedPracticeWeight",
+    "input",
+    {
+      validation: { schema: true, inputValueConvert: Number },
+    },
+  );
   groups["ads"] = new SettingsGroup("ads", "button");
   groups["alwaysShowWordsHistory"] = new SettingsGroup(
     "alwaysShowWordsHistory",
@@ -701,6 +708,12 @@ export async function update(
     "focusedPracticeRepeatedTestWeight",
     ".pageSettings .section[data-config-name='focusedPracticeRepeatedTestWeight'] input",
     Config.focusedPracticeRepeatedTestWeight,
+  );
+
+  setInputValue(
+    "focusedPracticeWeight",
+    ".pageSettings .section[data-config-name='focusedPracticeWeight'] input",
+    Config.focusedPracticeWeight,
   );
 
   setInputValue(

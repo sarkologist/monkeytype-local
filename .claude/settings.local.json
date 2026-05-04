@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "allow": ["Bash(pnpm --filter monkeytype tsc --noEmit)"]
+  }
+}

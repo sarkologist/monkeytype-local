@@ -783,8 +783,13 @@ function addPracticeEntry(
 }
 
 function buildPracticeStats(): CompletedEventPracticeStats | undefined {
-  if (!["time", "words"].includes(Config.mode)) return undefined;
-  if (FocusedPractice.isFocusedPracticeActive()) return undefined;
+  const focusedActive = FocusedPractice.isFocusedPracticeActive();
+  if (focusedActive) {
+    if (Config.mode !== "custom") return undefined;
+    if (Config.focusedPracticeWeight <= 0) return undefined;
+  } else {
+    if (!["time", "words"].includes(Config.mode)) return undefined;
+  }
   if (Config.punctuation || Config.numbers) return undefined;
   if (getActiveFunboxesWithFunction("withWords").length > 0) return undefined;
   if (TestState.isRepeated && Config.focusedPracticeRepeatedTestWeight <= 0) {
@@ -822,6 +827,8 @@ function buildPracticeStats(): CompletedEventPracticeStats | undefined {
   };
   if (TestState.isRepeated) {
     practiceStats.weight = Config.focusedPracticeRepeatedTestWeight;
+  } else if (focusedActive) {
+    practiceStats.weight = Config.focusedPracticeWeight;
   }
   return practiceStats;
 }

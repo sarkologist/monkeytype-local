@@ -267,6 +267,13 @@ export const configMetadata: ConfigMetadataObject = {
     changeRequiresRestart: false,
     group: "behavior",
   },
+  focusedPracticeWeight: {
+    key: "focusedPracticeWeight",
+    fa: { icon: "fa-bullseye" },
+    displayString: "focused practice weight",
+    changeRequiresRestart: false,
+    group: "behavior",
+  },
   resultSaving: {
     key: "resultSaving",
     fa: { icon: "fa-save" },

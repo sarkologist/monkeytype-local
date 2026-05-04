@@ -383,6 +383,9 @@ export type FocusedPracticeRepeatedTestWeight = z.infer<
   typeof FocusedPracticeRepeatedTestWeightSchema
 >;
 
+export const FocusedPracticeWeightSchema = z.number().min(0).max(1);
+export type FocusedPracticeWeight = z.infer<typeof FocusedPracticeWeightSchema>;
+
 export const ConfigSchema = z
   .object({
     // test
@@ -400,6 +403,7 @@ export const ConfigSchema = z
     quickRestart: QuickRestartSchema,
     repeatQuotes: RepeatQuotesSchema,
     focusedPracticeRepeatedTestWeight: FocusedPracticeRepeatedTestWeightSchema,
+    focusedPracticeWeight: FocusedPracticeWeightSchema,
     resultSaving: z.boolean(),
     blindMode: z.boolean(),
     alwaysShowWordsHistory: z.boolean(),

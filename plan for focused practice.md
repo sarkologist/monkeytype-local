@@ -338,3 +338,117 @@ Contract/schema:
 
 - Exact repeated-test UI step size is not documented in the plan.
 - Stats-only update rate-limit behavior still needs explicit confirmation/documentation.
+
+## Stats from focused practice runs
+
+### Motivation
+
+After focused practice, the user has improved on the practiced words/biwords, but those improvements never reach `userPracticeStats` because focused practice runs are excluded from collection. The next focused-practice generation re-picks the same items as if no improvement happened, until the user goes back to `time`/`words` mode. Reverse this: feed focused-practice runs into stats, dampened.
+
+### Approach
+
+- Remove the focused-practice exclusion in `buildPracticeStats`. Allow `mode === "custom"` only when focused practice is active.
+- Apply a new dampening weight to all stats produced by a focused-practice run. Filler words share the same weight (no per-entry weighting). Biwords across the practice/filler boundary are accepted as noise.
+- Keep all other guards: punctuation/numbers off, no `withWords` funbox, non-empty input.
+- Don't worry about the `isRepeated` × focused-practice intersection — quick restart already does not repeat in focused practice (commit `d40a0534e`).
+
+### Why dampened
+
+- Focused practice over-samples struggle words, inflating `confidence` (`min(1, attempts/8)`) on those keys faster than organic play.
+- Hyper-focused typing of the same words skews `slowScore` (speed vs baseline).
+- Dampening preserves the improvement signal while keeping practice runs from dominating the score.
+
+### Decay note
+
+Decay is lazy per record (applied on read in `getFocusItems`, on write in `updateEntry`). Only writing a subset of words during practice runs does not break decay for other records.
+
+### New config
+
+- Key: `focusedPracticeWeight`
+- Schema: `z.number().min(0).max(1)` (mirror `FocusedPracticeRepeatedTestWeightSchema`)
+- Default: `0.5`
+- Group: `behavior`
+- Icon: `fa-bullseye` (same as repeated-test weight)
+- Setting copy: "Controls how much focused practice runs contribute to focused practice data. Set to 0 to disable."
+- Setting `0` disables the contribution (`buildPracticeStats` returns `undefined` when focused-practice active and weight is 0).
+
+### Files to touch
+
+1. `packages/schemas/src/configs.ts` — add `FocusedPracticeWeightSchema` next to `FocusedPracticeRepeatedTestWeightSchema` (~line 381). Add `focusedPracticeWeight: FocusedPracticeWeightSchema` to `ConfigSchema` next to `focusedPracticeRepeatedTestWeight` (~line 402).
+2. `frontend/src/ts/constants/default-config.ts` — add `focusedPracticeWeight: 0.5` next to `focusedPracticeRepeatedTestWeight` (~line 89).
+3. `frontend/src/ts/config/metadata.ts` — add metadata entry next to `focusedPracticeRepeatedTestWeight` (~line 263).
+4. `frontend/src/ts/commandline/commandline-metadata.ts` — add `focusedPracticeWeight` input entry (~line 496).
+5. `frontend/src/ts/commandline/lists.ts` — add `"focusedPracticeWeight"` to behavior commands (~line 128).
+6. `frontend/src/ts/pages/settings.ts` — add `groups["focusedPracticeWeight"]` (~line 150) and `setInputValue` call (~line 700).
+7. `frontend/src/html/pages/settings.html` — add `<div class="section" data-config-name="focusedPracticeWeight">` block, copy-paste from the existing `focusedPracticeRepeatedTestWeight` section (~line 194).
+8. `frontend/src/ts/test/test-logic.ts` `buildPracticeStats` (~line 785) — gate change and weight assignment (see snippet below).
+
+### `buildPracticeStats` changes
+
+Replace the current guard block:
+
+```ts
+if (!["time", "words"].includes(Config.mode)) return undefined;
+if (FocusedPractice.isFocusedPracticeActive()) return undefined;
+if (Config.punctuation || Config.numbers) return undefined;
+if (getActiveFunboxesWithFunction("withWords").length > 0) return undefined;
+if (TestState.isRepeated && Config.focusedPracticeRepeatedTestWeight <= 0) {
+  return undefined;
+}
+```
+
+with:
+
+```ts
+const focusedActive = FocusedPractice.isFocusedPracticeActive();
+if (focusedActive) {
+  if (Config.mode !== "custom") return undefined;
+  if (Config.focusedPracticeWeight <= 0) return undefined;
+} else {
+  if (!["time", "words"].includes(Config.mode)) return undefined;
+}
+if (Config.punctuation || Config.numbers) return undefined;
+if (getActiveFunboxesWithFunction("withWords").length > 0) return undefined;
+if (TestState.isRepeated && Config.focusedPracticeRepeatedTestWeight <= 0) {
+  return undefined;
+}
+```
+
+Replace the trailing weight assignment:
+
+```ts
+if (TestState.isRepeated) {
+  practiceStats.weight = Config.focusedPracticeRepeatedTestWeight;
+}
+```
+
+with:
+
+```ts
+if (TestState.isRepeated) {
+  practiceStats.weight = Config.focusedPracticeRepeatedTestWeight;
+} else if (focusedActive) {
+  practiceStats.weight = Config.focusedPracticeWeight;
+}
+```
+
+### Implementation steps
+
+1. [x] Add `FocusedPracticeWeightSchema` and config field in schemas.
+2. [x] Add default value, metadata, commandline entries, settings group + input wiring, settings.html section.
+3. [x] Update `buildPracticeStats` gate and weight assignment.
+4. [x] Run `pnpm vitest run` on touched test files; verify type-check.
+5. [ ] Manual QA: do a focused practice session, confirm `userPracticeStats` updates with dampened increments and that picks shift after sustained improvement.
+
+### Tests
+
+Frontend:
+
+- [ ] focused-practice run emits `practiceStats` with `weight === Config.focusedPracticeWeight`
+- [ ] focused-practice run with `focusedPracticeWeight === 0` emits no `practiceStats`
+- [ ] non-focused custom mode still emits no `practiceStats`
+- [ ] focused-practice run still respects punctuation/numbers/funbox guards
+
+Backend:
+
+- No new backend behavior; existing weight-clamping/decay tests already cover the path.

@@ -87,6 +87,7 @@ const obj: Config = {
   monkey: false,
   repeatQuotes: "off",
   focusedPracticeRepeatedTestWeight: 0.25,
+  focusedPracticeWeight: 0.5,
   resultSaving: true,
   oppositeShiftMode: "off",
   customBackground: "",

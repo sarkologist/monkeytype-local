@@ -126,6 +126,7 @@ export const commands: CommandsSubgroup = {
       "quickRestart",
       "repeatQuotes",
       "focusedPracticeRepeatedTestWeight",
+      "focusedPracticeWeight",
       "blindMode",
       "alwaysShowWordsHistory",
       "singleListCommandLine",

@@ -10,7 +10,7 @@ Agent note: after implementing any focused-practice change, update this file and
 - Per-result aggregate payload is capped at 200 words and 200 biwords.
 - Biword misses follow current-word miss. Burst uses current-word burst.
 - Focused practice uses custom mode with pipe delimiter and shuffle, matching existing practice words behavior.
-- Focused practice sessions set a frontend flag and use custom mode, so generated practice does not feed stats.
+- Focused practice sessions feed stats back at a dampened weight (default 0.5), separate from the repeated-test weight. Filler words are dampened identically; biwords spanning practice + filler are not disentangled (accept the noise — see "Stats from focused practice runs" in the plan).
 - Decay is lazy on update/query with 30-day half-life, rounded to 3 decimals.
 - Scoring uses miss rate plus slow-burst score against the user's language baseline.
 - Query returns top 30 words and top 30 biwords, enough for generation without exposing the whole table.
