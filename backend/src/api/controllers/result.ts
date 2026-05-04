@@ -1,4 +1,5 @@
 import * as ResultDAL from "../../dal/result";
+import * as UserPracticeStatsDAL from "../../dal/user-practice-stats";
 import {
   isDevEnvironment,
   omit,
@@ -510,6 +511,10 @@ export async function addResult(
   }
   if (keyDurationStats !== undefined) {
     dbresult.keyDurationStats = keyDurationStats;
+  }
+
+  if (completedEvent.practiceStats !== undefined) {
+    await UserPracticeStatsDAL.updateStats(uid, completedEvent.practiceStats);
   }
 
   const addedResult = await ResultDAL.addResult(uid, dbresult);

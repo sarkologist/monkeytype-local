@@ -1,4 +1,5 @@
 import * as UserDAL from "../../dal/user";
+import * as UserPracticeStatsDAL from "../../dal/user-practice-stats";
 import MonkeyError, {
   getErrorMessage,
   isFirebaseError,
@@ -64,6 +65,8 @@ import {
   GetFriendsResponse,
   GetPersonalBestsQuery,
   GetPersonalBestsResponse,
+  GetPracticeStatsQuery,
+  GetPracticeStatsResponse,
   GetProfilePathParams,
   GetProfileQuery,
   GetProfileResponse,
@@ -83,6 +86,7 @@ import {
   UpdateEmailRequest,
   UpdateLeaderboardMemoryRequest,
   UpdatePasswordRequest,
+  UpdatePracticeStatsRequest,
   UpdateUserInboxRequest,
   UpdateUserNameRequest,
   UpdateUserProfileRequest,
@@ -850,6 +854,25 @@ export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
 
   const data = (await UserDAL.getStats(uid)) ?? null;
   return new MonkeyResponse("Personal stats retrieved", data);
+}
+
+export async function getPracticeStats(
+  req: MonkeyRequest<GetPracticeStatsQuery>,
+): Promise<GetPracticeStatsResponse> {
+  const { uid } = req.ctx.decodedToken;
+  const { language } = req.query;
+
+  const data = await UserPracticeStatsDAL.getFocusItems(uid, language);
+  return new MonkeyResponse("Practice stats retrieved", data);
+}
+
+export async function updatePracticeStats(
+  req: MonkeyRequest<undefined, UpdatePracticeStatsRequest>,
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+
+  await UserPracticeStatsDAL.updateStats(uid, req.body);
+  return new MonkeyResponse("Practice stats updated", null);
 }
 
 export async function getFavoriteQuotes(

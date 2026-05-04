@@ -58,6 +58,26 @@ export const CustomTextSettingsSchema = CompletedEventCustomTextSchema.omit({
 
 export type CustomTextSettings = z.infer<typeof CustomTextSettingsSchema>;
 
+const PracticeStatEntrySchema = z.object({
+  key: z.string().min(1).max(100),
+  attempts: z.number().nonnegative().max(1000),
+  misses: z.number().nonnegative().max(1000),
+  burstSum: z.number().nonnegative().max(100000),
+  burstCount: z.number().nonnegative().max(1000),
+});
+export type PracticeStatEntry = z.infer<typeof PracticeStatEntrySchema>;
+
+export const CompletedEventPracticeStatsSchema = z.object({
+  source: z.literal("generated"),
+  language: LanguageSchema,
+  weight: z.number().nonnegative().optional(),
+  words: z.array(PracticeStatEntrySchema).max(200),
+  biwords: z.array(PracticeStatEntrySchema).max(200),
+});
+export type CompletedEventPracticeStats = z.infer<
+  typeof CompletedEventPracticeStatsSchema
+>;
+
 export const CharStatsSchema = z.tuple([
   z.number().int().nonnegative(),
   z.number().int().nonnegative(),
@@ -147,6 +167,7 @@ export const CompletedEventSchema = ResultBaseSchema.required({
     wpmConsistency: PercentageSchema,
     stopOnLetter: z.boolean(),
     incompleteTests: z.array(IncompleteTestSchema),
+    practiceStats: CompletedEventPracticeStatsSchema.optional(),
   })
   .strict();
 

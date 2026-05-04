@@ -14,6 +14,7 @@ import * as CustomText from "./custom-text";
 import * as CustomTextState from "../legacy-states/custom-text-name";
 import * as TestStats from "./test-stats";
 import * as PractiseWords from "./practise-words";
+import * as FocusedPractice from "./focused-practice";
 import * as ShiftTracker from "./shift-tracker";
 import * as AltTracker from "./alt-tracker";
 import * as Funbox from "./funbox/funbox";
@@ -50,6 +51,8 @@ import { Mode } from "@monkeytype/schemas/shared";
 import {
   CompletedEvent,
   CompletedEventCustomText,
+  CompletedEventPracticeStats,
+  PracticeStatEntry,
 } from "@monkeytype/schemas/results";
 import {
   findSingleActiveFunboxWithFunction,
@@ -741,6 +744,84 @@ export async function retrySavingResult(): Promise<void> {
   await saveResult(completedEvent, true);
 }
 
+function normalizePracticeKey(word: string | undefined): string {
+  return (word ?? "")
+    .toLowerCase()
+    .replace(/[.?!":\-,]/g, "")
+    .trim();
+}
+
+function addPracticeEntry(
+  entries: Map<string, PracticeStatEntry>,
+  key: string,
+  missed: boolean,
+  burst: number,
+): void {
+  if (key === "" || /\d/.test(key)) return;
+
+  const entry =
+    entries.get(key) ??
+    ({
+      key,
+      attempts: 0,
+      misses: 0,
+      burstSum: 0,
+      burstCount: 0,
+    } satisfies PracticeStatEntry);
+
+  entry.attempts++;
+  if (missed) entry.misses++;
+  if (burst > 0) {
+    entry.burstSum += burst;
+    entry.burstCount++;
+  }
+  entries.set(key, entry);
+}
+
+function buildPracticeStats(): CompletedEventPracticeStats | undefined {
+  if (!["time", "words"].includes(Config.mode)) return undefined;
+  if (FocusedPractice.isFocusedPracticeActive()) return undefined;
+  if (Config.punctuation || Config.numbers) return undefined;
+  if (getActiveFunboxesWithFunction("withWords").length > 0) return undefined;
+  if (TestState.isRepeated && Config.focusedPracticeRepeatedTestWeight <= 0) {
+    return undefined;
+  }
+
+  const typedWords = TestInput.input.getHistory();
+  if (typedWords.length === 0) return undefined;
+
+  const words = new Map<string, PracticeStatEntry>();
+  const biwords = new Map<string, PracticeStatEntry>();
+
+  typedWords.forEach((typedWord, index) => {
+    const target = normalizePracticeKey(TestWords.words.getText(index, true));
+    const typed = normalizePracticeKey(typedWord);
+    const missed =
+      TestInput.missedWords[target] !== undefined || typed !== target;
+    const burst = TestInput.burstHistory[index] ?? 0;
+
+    addPracticeEntry(words, target, missed, burst);
+
+    if (index > 0) {
+      const previous = normalizePracticeKey(
+        TestWords.words.getText(index - 1, true),
+      );
+      addPracticeEntry(biwords, `${previous} ${target}`, missed, burst);
+    }
+  });
+
+  const practiceStats: CompletedEventPracticeStats = {
+    source: "generated",
+    language: Config.language,
+    words: [...words.values()].slice(0, 200),
+    biwords: [...biwords.values()].slice(0, 200),
+  };
+  if (TestState.isRepeated) {
+    practiceStats.weight = Config.focusedPracticeRepeatedTestWeight;
+  }
+  return practiceStats;
+}
+
 function buildCompletedEvent(
   stats: TestStats.Stats,
   rawPerSecond: number[],
@@ -871,10 +952,14 @@ function buildCompletedEvent(
     testDuration: duration,
     afkDuration: afkDuration,
     stopOnLetter: Config.stopOnError === "letter",
+    practiceStats: buildPracticeStats(),
   };
 
   if (completedEvent.mode !== "custom") delete completedEvent.customText;
   if (completedEvent.mode !== "quote") delete completedEvent.quoteLength;
+  if (completedEvent.practiceStats?.words.length === 0) {
+    delete completedEvent.practiceStats;
+  }
 
   return completedEvent;
 }
@@ -1027,6 +1112,7 @@ export async function finish(difficultyFailed = false): Promise<void> {
   const mode2Number = parseInt(completedEvent.mode2);
 
   let tooShort = false;
+  let canSaveRepeatedPracticeStats = false;
   //fail checks
   const dateDur = (TestStats.end3 - TestStats.start3) / 1000;
   if (
@@ -1074,6 +1160,7 @@ export async function finish(difficultyFailed = false): Promise<void> {
   } else if (TestState.isRepeated) {
     showNoticeNotification("Test invalid - repeated");
     TestStats.setInvalid();
+    canSaveRepeatedPracticeStats = true;
     dontSave = true;
   } else if (
     completedEvent.wpm < 0 ||
@@ -1175,11 +1262,22 @@ export async function finish(difficultyFailed = false): Promise<void> {
 
   let savingResultPromise: ReturnType<typeof saveResult> =
     Promise.resolve(null);
+  let savingPracticeStatsPromise: ReturnType<typeof savePracticeStatsOnly> =
+    Promise.resolve(null);
   const user = getAuthenticatedUser();
   if (user !== null) {
     // logged in
     if (dontSave) {
       void AnalyticsController.log("testCompletedInvalid");
+      if (
+        Config.resultSaving &&
+        canSaveRepeatedPracticeStats &&
+        completedEvent.practiceStats !== undefined
+      ) {
+        savingPracticeStatsPromise = savePracticeStatsOnly(
+          completedEvent.practiceStats,
+        );
+      }
     } else {
       TestStats.resetIncomplete();
 
@@ -1218,7 +1316,25 @@ export async function finish(difficultyFailed = false): Promise<void> {
     dontSave,
   );
 
-  await Promise.all([savingResultPromise, resultUpdatePromise]);
+  await Promise.all([
+    savingResultPromise,
+    savingPracticeStatsPromise,
+    resultUpdatePromise,
+  ]);
+}
+
+async function savePracticeStatsOnly(
+  practiceStats: CompletedEventPracticeStats,
+): Promise<null | Awaited<ReturnType<typeof Ape.users.updatePracticeStats>>> {
+  const response = await Ape.users.updatePracticeStats({ body: practiceStats });
+  if (response.status !== 200) {
+    console.log("Error saving practice stats", practiceStats);
+    showErrorNotification("Failed to save focused practice stats", {
+      response,
+    });
+    return response;
+  }
+  return response;
 }
 
 async function saveResult(

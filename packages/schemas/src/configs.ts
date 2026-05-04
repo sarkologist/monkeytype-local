@@ -378,6 +378,11 @@ export const PlayTimeWarningSchema = z
   );
 export type PlayTimeWarning = z.infer<typeof PlayTimeWarningSchema>;
 
+export const FocusedPracticeRepeatedTestWeightSchema = z.number().min(0).max(1);
+export type FocusedPracticeRepeatedTestWeight = z.infer<
+  typeof FocusedPracticeRepeatedTestWeightSchema
+>;
+
 export const ConfigSchema = z
   .object({
     // test
@@ -394,6 +399,7 @@ export const ConfigSchema = z
     difficulty: DifficultySchema,
     quickRestart: QuickRestartSchema,
     repeatQuotes: RepeatQuotesSchema,
+    focusedPracticeRepeatedTestWeight: FocusedPracticeRepeatedTestWeightSchema,
     resultSaving: z.boolean(),
     blindMode: z.boolean(),
     alwaysShowWordsHistory: z.boolean(),

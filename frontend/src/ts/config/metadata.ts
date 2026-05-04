@@ -260,6 +260,13 @@ export const configMetadata: ConfigMetadataObject = {
     changeRequiresRestart: false,
     group: "behavior",
   },
+  focusedPracticeRepeatedTestWeight: {
+    key: "focusedPracticeRepeatedTestWeight",
+    fa: { icon: "fa-bullseye" },
+    displayString: "focused practice repeated test weight",
+    changeRequiresRestart: false,
+    group: "behavior",
+  },
   resultSaving: {
     key: "resultSaving",
     fa: { icon: "fa-save" },

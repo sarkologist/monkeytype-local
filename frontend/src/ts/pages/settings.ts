@@ -147,6 +147,13 @@ async function initGroups(): Promise<void> {
   groups["blindMode"] = new SettingsGroup("blindMode", "button");
   groups["quickEnd"] = new SettingsGroup("quickEnd", "button");
   groups["repeatQuotes"] = new SettingsGroup("repeatQuotes", "button");
+  groups["focusedPracticeRepeatedTestWeight"] = new SettingsGroup(
+    "focusedPracticeRepeatedTestWeight",
+    "input",
+    {
+      validation: { schema: true, inputValueConvert: Number },
+    },
+  );
   groups["ads"] = new SettingsGroup("ads", "button");
   groups["alwaysShowWordsHistory"] = new SettingsGroup(
     "alwaysShowWordsHistory",
@@ -688,6 +695,12 @@ export async function update(
     "fontSize",
     ".pageSettings .section[data-config-name='fontSize'] input",
     Config.fontSize,
+  );
+
+  setInputValue(
+    "focusedPracticeRepeatedTestWeight",
+    ".pageSettings .section[data-config-name='focusedPracticeRepeatedTestWeight'] input",
+    Config.focusedPracticeRepeatedTestWeight,
   );
 
   setInputValue(

@@ -10,6 +10,7 @@ import * as TestState from "../../test/test-state";
 import * as TestWords from "../../test/test-words";
 import { Config } from "../../config/store";
 import * as PractiseWords from "../../test/practise-words";
+import * as FocusedPractice from "../../test/focused-practice";
 import { Command, CommandsSubgroup } from "../types";
 import * as TestScreenshot from "../../test/test-screenshot";
 
@@ -43,6 +44,15 @@ const practiceSubgroup: CommandsSubgroup = {
         PractiseWords.init("words", true);
         TestLogic.restart({
           practiseMissed: true,
+        });
+      },
+    },
+    {
+      id: "focusedPractice",
+      display: "focused",
+      exec: (): void => {
+        void FocusedPractice.init().then((started) => {
+          if (started) TestLogic.restart({ practiseMissed: true });
         });
       },
     },

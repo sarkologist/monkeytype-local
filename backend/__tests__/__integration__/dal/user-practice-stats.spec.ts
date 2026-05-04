@@ -1,0 +1,133 @@
+import { describe, it, expect, afterEach } from "vitest";
+import * as PracticeStatsDal from "../../../src/dal/user-practice-stats";
+import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
+
+const uid = "practice-test-user";
+
+function stats(
+  wordAttempts: number,
+  wordMisses: number,
+): CompletedEventPracticeStats {
+  return {
+    source: "generated",
+    language: "english",
+    words: [
+      {
+        key: "about",
+        attempts: wordAttempts,
+        misses: wordMisses,
+        burstSum: 200,
+        burstCount: 1,
+      },
+    ],
+    biwords: [
+      {
+        key: "think about",
+        attempts: 1,
+        misses: 1,
+        burstSum: 150,
+        burstCount: 1,
+      },
+    ],
+  };
+}
+
+describe("UserPracticeStatsDal", () => {
+  afterEach(async () => {
+    await PracticeStatsDal.getCollection().deleteMany({ uid });
+  });
+
+  it("increments repeated keys", async () => {
+    await PracticeStatsDal.updateStats(uid, stats(2, 1), 1000);
+    await PracticeStatsDal.updateStats(uid, stats(3, 2), 1000);
+
+    const doc = await PracticeStatsDal.getCollection().findOne({
+      uid,
+      language: "english",
+      type: "word",
+      key: "about",
+    });
+
+    expect(doc?.attempts).toBe(5);
+    expect(doc?.misses).toBe(3);
+  });
+
+  it("scales payloads by weight", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      { ...stats(4, 2), weight: 0.25 },
+      1000,
+    );
+
+    const doc = await PracticeStatsDal.getCollection().findOne({
+      uid,
+      language: "english",
+      type: "word",
+      key: "about",
+    });
+
+    expect(doc?.attempts).toBe(1);
+    expect(doc?.misses).toBe(0.5);
+    expect(doc?.burstSum).toBe(50);
+    expect(doc?.burstCount).toBe(0.25);
+  });
+
+  it("clamps payload weight", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      { ...stats(4, 2), weight: 2 },
+      1000,
+    );
+
+    const doc = await PracticeStatsDal.getCollection().findOne({
+      uid,
+      language: "english",
+      type: "word",
+      key: "about",
+    });
+
+    expect(doc?.attempts).toBe(4);
+    expect(doc?.misses).toBe(2);
+  });
+
+  it("decays before incrementing", async () => {
+    await PracticeStatsDal.updateStats(uid, stats(8, 4), 0);
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        ...stats(0, 0),
+        words: [
+          {
+            key: "about",
+            attempts: 0,
+            misses: 0,
+            burstSum: 0,
+            burstCount: 0,
+          },
+        ],
+        biwords: [],
+      },
+      30 * 24 * 60 * 60 * 1000,
+    );
+
+    const doc = await PracticeStatsDal.getCollection().findOne({
+      uid,
+      language: "english",
+      type: "word",
+      key: "about",
+    });
+
+    expect(doc?.attempts).toBe(4);
+    expect(doc?.misses).toBe(2);
+  });
+
+  it("scores focus items", async () => {
+    await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+
+    expect(focus.words[0]?.key).toBe("about");
+    expect(focus.words[0]?.score).toBeGreaterThan(0);
+    expect(focus.biwords).toHaveLength(0);
+  });
+});

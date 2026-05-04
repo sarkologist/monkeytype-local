@@ -36,6 +36,38 @@ import {
 import { IdSchema, StringNumberSchema } from "@monkeytype/schemas/util";
 import { LanguageSchema } from "@monkeytype/schemas/languages";
 import { CustomThemeColorsSchema } from "@monkeytype/schemas/configs";
+import { CompletedEventPracticeStatsSchema } from "@monkeytype/schemas/results";
+
+const FocusItemSchema = z.object({
+  key: z.string(),
+  type: z.enum(["word", "biword"]),
+  attempts: z.number().nonnegative(),
+  misses: z.number().nonnegative(),
+  averageBurst: z.number().nonnegative().optional(),
+  score: z.number().nonnegative(),
+});
+export type FocusItem = z.infer<typeof FocusItemSchema>;
+
+export const GetPracticeStatsQuerySchema = z.object({
+  language: LanguageSchema,
+});
+export type GetPracticeStatsQuery = z.infer<typeof GetPracticeStatsQuerySchema>;
+
+export const GetPracticeStatsResponseSchema = responseWithData(
+  z.object({
+    words: z.array(FocusItemSchema),
+    biwords: z.array(FocusItemSchema),
+  }),
+);
+export type GetPracticeStatsResponse = z.infer<
+  typeof GetPracticeStatsResponseSchema
+>;
+
+export const UpdatePracticeStatsRequestSchema =
+  CompletedEventPracticeStatsSchema;
+export type UpdatePracticeStatsRequest = z.infer<
+  typeof UpdatePracticeStatsRequestSchema
+>;
 
 export const GetUserResponseSchema = responseWithData(
   UserSchema.extend({
@@ -701,6 +733,33 @@ export const usersContract = c.router(
       metadata: meta({
         authenticationOptions: { acceptApeKeys: true },
         rateLimit: "userGet",
+      }),
+    },
+    getPracticeStats: {
+      summary: "get practice stats",
+      description: "Gets focused practice items for a language",
+      method: "GET",
+      path: "/practiceStats",
+      query: GetPracticeStatsQuerySchema.strict(),
+      responses: {
+        200: GetPracticeStatsResponseSchema,
+      },
+      metadata: meta({
+        rateLimit: "userGet",
+      }),
+    },
+    updatePracticeStats: {
+      summary: "update practice stats",
+      description: "Updates focused practice stats without saving a result",
+      method: "POST",
+      path: "/practiceStats",
+      body: UpdatePracticeStatsRequestSchema.strict(),
+      responses: {
+        200: MonkeyResponseSchema,
+        ...CommonResponses,
+      },
+      metadata: meta({
+        rateLimit: "resultsAdd",
       }),
     },
     setStreakHourOffset: {
