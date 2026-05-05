@@ -15,18 +15,24 @@ import { restartTestEvent } from "../events/test";
 
 let focusedPracticeActive = false;
 
-function weightedItems(items: FocusItem[], limit: number): string[] {
-  const selected: string[] = [];
-  const top = items.slice(0, limit);
-
-  top.forEach((item, index) => {
-    const repeats = Math.max(1, Math.min(5, top.length - index));
-    for (let i = 0; i < repeats; i++) {
-      selected.push(item.key);
+function sampleWeighted(items: FocusItem[], count: number): string[] {
+  if (items.length === 0 || count === 0) return [];
+  const weights = items.map((item) => Math.max(item.score, 1e-6));
+  const total = weights.reduce((s, w) => s + w, 0);
+  const result: string[] = [];
+  for (let i = 0; i < count; i++) {
+    let r = Math.random() * total;
+    let picked = items[items.length - 1] ?? items[0];
+    for (let j = 0; j < weights.length; j++) {
+      r -= weights[j] ?? 0;
+      if (r <= 0) {
+        picked = items[j] ?? picked;
+        break;
+      }
     }
-  });
-
-  return selected;
+    if (picked !== undefined) result.push(picked.key);
+  }
+  return result;
 }
 
 export function isFocusedPracticeActive(): boolean {
@@ -43,25 +49,32 @@ export async function init(): Promise<boolean> {
     return false;
   }
 
-  const focusItems = response.body.data;
-  const practiceText = [
-    ...weightedItems(focusItems.words, Config.focusedPracticeItemCount),
-    ...weightedItems(focusItems.biwords, Config.focusedPracticeItemCount),
-  ];
+  const { words, biwords } = response.body.data;
 
-  if (practiceText.length === 0) {
+  if (words.length === 0 && biwords.length === 0) {
     showNoticeNotification("Not enough focused practice data yet.");
     return false;
   }
 
-  const language = await JSONData.getLanguage(Config.language);
-  const filler = language.words.slice(0, 100);
-  const fillerCount = Math.ceil(practiceText.length * 0.3);
+  const targetLength = Config.focusedPracticeWordCount;
+  const practiceCount = Math.round(
+    targetLength * (1 - Config.focusedPracticeFillerProbability),
+  );
+  const fillerCount = targetLength - practiceCount;
+  const wordSlots = Math.ceil(practiceCount / 2);
+  const biwordSlots = practiceCount - wordSlots;
 
-  for (let i = 0; i < fillerCount; i++) {
-    const word = filler[Math.floor(Math.random() * filler.length)];
-    if (word !== undefined) practiceText.push(word);
-  }
+  const language = await JSONData.getLanguage(Config.language);
+  const fillerPool = language.words.slice(0, 100);
+
+  const pool = [
+    ...sampleWeighted(words, wordSlots),
+    ...sampleWeighted(biwords, biwordSlots),
+    ...Array.from(
+      { length: fillerCount },
+      () => fillerPool[Math.floor(Math.random() * fillerPool.length)] ?? "",
+    ),
+  ].filter(Boolean);
 
   before.mode = before.mode ?? Config.mode;
   before.punctuation = before.punctuation ?? Config.punctuation;
@@ -70,14 +83,10 @@ export async function init(): Promise<boolean> {
 
   setConfig("mode", "custom", { nosave: true });
   CustomText.setPipeDelimiter(true);
-  CustomText.setText(practiceText);
+  CustomText.setText(pool);
   CustomText.setLimitMode("section");
   CustomText.setMode("shuffle");
-  const n = Config.focusedPracticeItemCount;
-  const perCat = n <= 4 ? (n * (n + 1)) / 2 : 5 * n - 10;
-  const totalBeforeFiller = 2 * perCat;
-  const targetLength = totalBeforeFiller + Math.ceil(totalBeforeFiller * 0.3);
-  CustomText.setLimitValue(Math.min(100, Math.max(20, targetLength)));
+  CustomText.setLimitValue(targetLength);
   setCustomTextName("focused practice", undefined);
   focusedPracticeActive = true;
 
@@ -90,7 +99,11 @@ export function reset(): void {
 
 configEvent.subscribe(({ key, newValue }) => {
   if (key === "mode" && newValue !== "custom") reset();
-  if (key === "focusedPracticeItemCount" && focusedPracticeActive) {
+  if (
+    (key === "focusedPracticeWordCount" ||
+      key === "focusedPracticeFillerProbability") &&
+    focusedPracticeActive
+  ) {
     void init().then((started) => {
       if (started) restartTestEvent.dispatch({ practiseMissed: true });
     });

@@ -274,10 +274,17 @@ export const configMetadata: ConfigMetadataObject = {
     changeRequiresRestart: false,
     group: "behavior",
   },
-  focusedPracticeItemCount: {
-    key: "focusedPracticeItemCount",
+  focusedPracticeWordCount: {
+    key: "focusedPracticeWordCount",
     fa: { icon: "fa-bullseye" },
-    displayString: "focused practice item count",
+    displayString: "focused practice word count",
+    changeRequiresRestart: false,
+    group: "behavior",
+  },
+  focusedPracticeFillerProbability: {
+    key: "focusedPracticeFillerProbability",
+    fa: { icon: "fa-bullseye" },
+    displayString: "focused practice filler probability",
     changeRequiresRestart: false,
     group: "behavior",
   },

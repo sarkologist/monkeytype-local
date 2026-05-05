@@ -503,7 +503,12 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
       inputValueConvert: Number,
     },
   },
-  focusedPracticeItemCount: {
+  focusedPracticeWordCount: {
+    input: {
+      inputValueConvert: Number,
+    },
+  },
+  focusedPracticeFillerProbability: {
     input: {
       inputValueConvert: Number,
     },

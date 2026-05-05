@@ -386,9 +386,14 @@ export type FocusedPracticeRepeatedTestWeight = z.infer<
 export const FocusedPracticeWeightSchema = z.number().min(0).max(1);
 export type FocusedPracticeWeight = z.infer<typeof FocusedPracticeWeightSchema>;
 
-export const FocusedPracticeItemCountSchema = z.number().int().min(3).max(20);
-export type FocusedPracticeItemCount = z.infer<
-  typeof FocusedPracticeItemCountSchema
+export const FocusedPracticeWordCountSchema = z.number().int().min(10).max(100);
+export type FocusedPracticeWordCount = z.infer<
+  typeof FocusedPracticeWordCountSchema
+>;
+
+export const FocusedPracticeFillerProbabilitySchema = z.number().min(0).max(1);
+export type FocusedPracticeFillerProbability = z.infer<
+  typeof FocusedPracticeFillerProbabilitySchema
 >;
 
 export const ConfigSchema = z
@@ -409,7 +414,8 @@ export const ConfigSchema = z
     repeatQuotes: RepeatQuotesSchema,
     focusedPracticeRepeatedTestWeight: FocusedPracticeRepeatedTestWeightSchema,
     focusedPracticeWeight: FocusedPracticeWeightSchema,
-    focusedPracticeItemCount: FocusedPracticeItemCountSchema,
+    focusedPracticeWordCount: FocusedPracticeWordCountSchema,
+    focusedPracticeFillerProbability: FocusedPracticeFillerProbabilitySchema,
     resultSaving: z.boolean(),
     blindMode: z.boolean(),
     alwaysShowWordsHistory: z.boolean(),

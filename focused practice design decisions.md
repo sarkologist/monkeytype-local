@@ -14,6 +14,6 @@ Agent note: after implementing any focused-practice change, update this file and
 - Decay is lazy on update/query with 30-day half-life, rounded to 3 decimals.
 - Scoring uses miss rate plus slow-burst score against the user's language baseline.
 - Query returns top 30 words and top 30 biwords, enough for generation without exposing the whole table.
-- Filler comes from the active language's first 100 words, capped around 30% of focused items.
+- Session pool is built by score-weighted sampling with replacement: `focusedPracticeWordCount` total words, split evenly between words and biwords for the practice fraction, with filler words filling the remainder at probability `focusedPracticeFillerProbability`. Session limit equals word count exactly.
 - Entry points are the global commandline `Focused practice` command and the existing result-screen practice command subgroup as `focused`.
 - The global entry point is always visible; insufficient historical data is handled after execution with a notice.

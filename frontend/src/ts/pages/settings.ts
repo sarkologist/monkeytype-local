@@ -161,8 +161,15 @@ async function initGroups(): Promise<void> {
       validation: { schema: true, inputValueConvert: Number },
     },
   );
-  groups["focusedPracticeItemCount"] = new SettingsGroup(
-    "focusedPracticeItemCount",
+  groups["focusedPracticeWordCount"] = new SettingsGroup(
+    "focusedPracticeWordCount",
+    "input",
+    {
+      validation: { schema: true, inputValueConvert: Number },
+    },
+  );
+  groups["focusedPracticeFillerProbability"] = new SettingsGroup(
+    "focusedPracticeFillerProbability",
     "input",
     {
       validation: { schema: true, inputValueConvert: Number },
@@ -724,9 +731,15 @@ export async function update(
   );
 
   setInputValue(
-    "focusedPracticeItemCount",
-    ".pageSettings .section[data-config-name='focusedPracticeItemCount'] input",
-    Config.focusedPracticeItemCount,
+    "focusedPracticeWordCount",
+    ".pageSettings .section[data-config-name='focusedPracticeWordCount'] input",
+    Config.focusedPracticeWordCount,
+  );
+
+  setInputValue(
+    "focusedPracticeFillerProbability",
+    ".pageSettings .section[data-config-name='focusedPracticeFillerProbability'] input",
+    Config.focusedPracticeFillerProbability,
   );
 
   setInputValue(

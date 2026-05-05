@@ -3,7 +3,9 @@
     "allow": [
       "Bash(pnpm --filter monkeytype tsc --noEmit)",
       "Bash(pnpm --filter frontend tsc --noEmit)",
-      "Bash(fnm use *)"
+      "Bash(fnm use *)",
+      "Bash(pnpm --filter @monkeytype/schemas build)",
+      "Bash(npx tsc *)"
     ]
   }
 }
