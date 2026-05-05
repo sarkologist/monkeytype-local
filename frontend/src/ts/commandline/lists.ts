@@ -127,6 +127,7 @@ export const commands: CommandsSubgroup = {
       "repeatQuotes",
       "focusedPracticeRepeatedTestWeight",
       "focusedPracticeWeight",
+      "focusedPracticeItemCount",
       "blindMode",
       "alwaysShowWordsHistory",
       "singleListCommandLine",

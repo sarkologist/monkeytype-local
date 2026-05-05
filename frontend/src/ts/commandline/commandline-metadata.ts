@@ -503,6 +503,11 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
       inputValueConvert: Number,
     },
   },
+  focusedPracticeItemCount: {
+    input: {
+      inputValueConvert: Number,
+    },
+  },
   paceCaretStyle: {
     subgroup: {
       options: "fromSchema",

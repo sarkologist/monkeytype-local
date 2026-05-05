@@ -1,5 +1,5 @@
 Be extremely concise. Sacrifice grammar for concision.
-Before implementing anything, always check `current work.md`.
+Before implementing anything, always check `current work.md`. After implementation, update.
 Frontend is partially migrated from vanilla JS to SolidJS — new components use `.tsx`, legacy code remains vanilla.
 Single test file: `pnpm vitest run path/to/test.ts`
 For styling, use Tailwind CSS, class property, `cn` utility. Do not use classlist. Only colors available are those defined in Tailwind config.

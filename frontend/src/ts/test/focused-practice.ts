@@ -11,6 +11,7 @@ import { setCustomTextName } from "../legacy-states/custom-text-name";
 import { FocusItem } from "@monkeytype/contracts/users";
 import { before } from "./practise-words";
 import { configEvent } from "../events/config";
+import { restartTestEvent } from "../events/test";
 
 let focusedPracticeActive = false;
 
@@ -44,8 +45,8 @@ export async function init(): Promise<boolean> {
 
   const focusItems = response.body.data;
   const practiceText = [
-    ...weightedItems(focusItems.words, 10),
-    ...weightedItems(focusItems.biwords, 10),
+    ...weightedItems(focusItems.words, Config.focusedPracticeItemCount),
+    ...weightedItems(focusItems.biwords, Config.focusedPracticeItemCount),
   ];
 
   if (practiceText.length === 0) {
@@ -72,7 +73,11 @@ export async function init(): Promise<boolean> {
   CustomText.setText(practiceText);
   CustomText.setLimitMode("section");
   CustomText.setMode("shuffle");
-  CustomText.setLimitValue(Math.min(100, Math.max(20, practiceText.length)));
+  const n = Config.focusedPracticeItemCount;
+  const perCat = n <= 4 ? (n * (n + 1)) / 2 : 5 * n - 10;
+  const totalBeforeFiller = 2 * perCat;
+  const targetLength = totalBeforeFiller + Math.ceil(totalBeforeFiller * 0.3);
+  CustomText.setLimitValue(Math.min(100, Math.max(20, targetLength)));
   setCustomTextName("focused practice", undefined);
   focusedPracticeActive = true;
 
@@ -85,4 +90,9 @@ export function reset(): void {
 
 configEvent.subscribe(({ key, newValue }) => {
   if (key === "mode" && newValue !== "custom") reset();
+  if (key === "focusedPracticeItemCount" && focusedPracticeActive) {
+    void init().then((started) => {
+      if (started) restartTestEvent.dispatch({ practiseMissed: true });
+    });
+  }
 });

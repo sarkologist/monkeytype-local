@@ -8,7 +8,6 @@ Persist enough per-result typing detail to build long-term weak-word and weak-co
 
 - Generate practice via custom mode first.
 - Collect stats from generated wordlists, including repeated tests at reduced weight.
-- Do not collect stats from stats-generated practice.
 - Ignore punctuation and numbers when bucketing stats.
 - Decay old data so practice adapts over time.
 - Make repeated-test contribution weight configurable in settings.
@@ -452,3 +451,48 @@ Frontend:
 Backend:
 
 - No new backend behavior; existing weight-clamping/decay tests already cover the path.
+
+## Configurable focused practice length
+
+### Motivation
+
+Generated focused practice text is too long. Today `focused-practice.ts` hardcodes top-10 words + top-10 biwords, each repeated 1–5× by rank, plus 30% filler — ~78 items per session. Expose item count `N` as a setting so the user can shorten runs.
+
+### Decisions
+
+- Stay on custom mode. Defer mode promotion until per-mode settings demand it.
+- One shared `N` for both words and biwords (matches current symmetry).
+- Keep per-rank repeats (1–5) and 30% filler ratio hardcoded for now.
+- Range 3–20, default 10 (preserves current behavior).
+
+### New config
+
+- Key: `focusedPracticeItemCount`
+- Schema: `z.number().int().min(3).max(20)`
+- Default: `10`
+- Group: `behavior`
+- Icon: `fa-bullseye` (match other focused practice settings)
+- Setting copy: "Number of top focus words and biwords used to generate a focused practice session. Lower = shorter sessions."
+
+### Files to touch
+
+1. `packages/schemas/src/configs.ts` — add `FocusedPracticeItemCountSchema` next to `FocusedPracticeWeightSchema`. Add `focusedPracticeItemCount: FocusedPracticeItemCountSchema` to `ConfigSchema`.
+2. `frontend/src/ts/constants/default-config.ts` — add `focusedPracticeItemCount: 10` next to `focusedPracticeWeight`.
+3. `frontend/src/ts/config/metadata.ts` — add metadata entry next to `focusedPracticeWeight`.
+4. `frontend/src/ts/commandline/commandline-metadata.ts` — add `focusedPracticeItemCount` input entry.
+5. `frontend/src/ts/commandline/lists.ts` — add `"focusedPracticeItemCount"` to behavior commands.
+6. `frontend/src/ts/pages/settings.ts` — add `groups["focusedPracticeItemCount"]` and `setInputValue` call.
+7. `frontend/src/html/pages/settings.html` — add `<div class="section" data-config-name="focusedPracticeItemCount">` block, copy-paste from `focusedPracticeWeight` section.
+8. `frontend/src/ts/test/focused-practice.ts` `init()` — replace the two hardcoded `10`s in `weightedItems(focusItems.words, 10)` and `weightedItems(focusItems.biwords, 10)` with `Config.focusedPracticeItemCount`.
+
+### Implementation steps
+
+1. [x] Add `FocusedPracticeItemCountSchema` and config field in schemas.
+2. [x] Add default value, metadata, commandline entries, settings group + input wiring, settings.html section.
+3. [x] Replace hardcoded `10` in `focused-practice.ts` with config value.
+4. [x] Type-check; run `pnpm vitest run` on touched test files.
+5. [x] Manual QA: found bug — limitValue was derived from practiceText.length (actual pool), so sparse stats caused config 3 and 20 to give same session length. Fixed: limitValue now computed from config value directly (mirrors the weighted-items formula), so session length scales cleanly: n=3→20, n=5→39, n=9→91, n=10+→100. Pool cycling (shuffledWord) handles cases where limitValue > pool.length.
+
+### Tests
+
+- No new automated tests required; the change is a single formula replacement. Manual QA covers it.

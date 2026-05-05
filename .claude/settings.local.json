@@ -1,5 +1,9 @@
 {
   "permissions": {
-    "allow": ["Bash(pnpm --filter monkeytype tsc --noEmit)"]
+    "allow": [
+      "Bash(pnpm --filter monkeytype tsc --noEmit)",
+      "Bash(pnpm --filter frontend tsc --noEmit)",
+      "Bash(fnm use *)"
+    ]
   }
 }

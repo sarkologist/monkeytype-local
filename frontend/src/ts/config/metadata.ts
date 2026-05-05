@@ -274,6 +274,13 @@ export const configMetadata: ConfigMetadataObject = {
     changeRequiresRestart: false,
     group: "behavior",
   },
+  focusedPracticeItemCount: {
+    key: "focusedPracticeItemCount",
+    fa: { icon: "fa-bullseye" },
+    displayString: "focused practice item count",
+    changeRequiresRestart: false,
+    group: "behavior",
+  },
   resultSaving: {
     key: "resultSaving",
     fa: { icon: "fa-save" },
