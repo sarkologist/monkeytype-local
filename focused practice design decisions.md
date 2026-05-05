@@ -13,7 +13,7 @@ Agent note: after implementing any focused-practice change, update this file and
 - Focused practice sessions feed stats back at a dampened weight (default 0.5), separate from the repeated-test weight. Filler words are dampened identically; biwords spanning practice + filler are not disentangled (accept the noise — see "Stats from focused practice runs" in the plan).
 - Decay is lazy on update/query with 30-day half-life, rounded to 3 decimals.
 - Scoring uses miss rate plus slow-burst score against the user's language baseline.
-- Query returns top 30 words and top 30 biwords, enough for generation without exposing the whole table.
+- Query returns all qualifying items (score > 0), sorted by score descending; long tail is naturally low-probability via score-weighted sampling.
 - Session pool is built by score-weighted sampling with replacement: `focusedPracticeWordCount` total words, split evenly between words and biwords for the practice fraction, with filler words filling the remainder at probability `focusedPracticeFillerProbability`. Session limit equals word count exactly.
 - Entry points are the global commandline `Focused practice` command and the existing result-screen practice command subgroup as `focused`.
 - The global entry point is always visible; insufficient historical data is handled after execution with a notice.

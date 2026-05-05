@@ -5,7 +5,13 @@
       "Bash(pnpm --filter frontend tsc --noEmit)",
       "Bash(fnm use *)",
       "Bash(pnpm --filter @monkeytype/schemas build)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git commit -m ' *)",
+      "Bash(pnpm tsc *)",
+      "Bash(nvm list *)",
+      "Bash(git -C /Users/sark/code/monkeytype status)",
+      "Bash(nvm use *)",
+      "Bash(git add *)"
     ]
   }
 }

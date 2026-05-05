@@ -1,8 +1,17 @@
-import { createMemo, createResource, For, JSXElement, Show } from "solid-js";
+import {
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  JSXElement,
+  Show,
+} from "solid-js";
 
 import Ape from "../../../ape";
 import { getConfig } from "../../../config/store";
 import { Formatting } from "../../../utils/format";
+
+const PAGE_SIZE = 10;
 
 export function FocusedPracticeStats(): JSXElement {
   const language = () => getConfig.language;
@@ -16,13 +25,15 @@ export function FocusedPracticeStats(): JSXElement {
 
   const format = createMemo(() => new Formatting(getConfig));
 
-  const topItems = createMemo(() => {
+  const [visibleCount, setVisibleCount] = createSignal(PAGE_SIZE);
+
+  const allItems = createMemo(() => {
     const d = stats();
     if (!d) return [];
-    return [...d.words, ...d.biwords]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+    return [...d.words, ...d.biwords].sort((a, b) => b.score - a.score);
   });
+
+  const topItems = createMemo(() => allItems().slice(0, visibleCount()));
 
   return (
     <Show when={stats()}>
@@ -92,6 +103,15 @@ export function FocusedPracticeStats(): JSXElement {
                     )}
                   </For>
                 </div>
+                <Show when={visibleCount() < allItems().length}>
+                  <button
+                    type="button"
+                    class="w-fit text-sm text-sub hover:text-text"
+                    onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  >
+                    load more
+                  </button>
+                </Show>
               </div>
             </Show>
           </Show>

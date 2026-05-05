@@ -204,7 +204,7 @@ export async function getFocusItems(
 
   return {
     summary,
-    words: scored.filter((stat) => stat.type === "word").slice(0, 30),
-    biwords: scored.filter((stat) => stat.type === "biword").slice(0, 30),
+    words: scored.filter((stat) => stat.type === "word"),
+    biwords: scored.filter((stat) => stat.type === "biword"),
   };
 }
