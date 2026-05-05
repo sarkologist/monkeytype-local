@@ -53,8 +53,17 @@ export const GetPracticeStatsQuerySchema = z.object({
 });
 export type GetPracticeStatsQuery = z.infer<typeof GetPracticeStatsQuerySchema>;
 
+const PracticeStatsSummarySchema = z.object({
+  totalWords: z.number().nonnegative(),
+  totalBiwords: z.number().nonnegative(),
+  missRate: z.number().nonnegative(),
+  averageBurst: z.number().nonnegative(),
+});
+export type PracticeStatsSummary = z.infer<typeof PracticeStatsSummarySchema>;
+
 export const GetPracticeStatsResponseSchema = responseWithData(
   z.object({
+    summary: PracticeStatsSummarySchema,
     words: z.array(FocusItemSchema),
     biwords: z.array(FocusItemSchema),
   }),

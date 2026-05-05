@@ -151,11 +151,22 @@ function scoreItem(stat: UserPracticeStat, baselineBurst: number): FocusItem {
   };
 }
 
+type PracticeStatsSummary = {
+  totalWords: number;
+  totalBiwords: number;
+  missRate: number;
+  averageBurst: number;
+};
+
 export async function getFocusItems(
   uid: string,
   language: Language,
   now = Date.now(),
-): Promise<{ words: FocusItem[]; biwords: FocusItem[] }> {
+): Promise<{
+  summary: PracticeStatsSummary;
+  words: FocusItem[];
+  biwords: FocusItem[];
+}> {
   const stats = await getCollection().find({ uid, language }).toArray();
   const decayed = stats.map((stat) => ({
     ...stat,
@@ -172,17 +183,27 @@ export async function getFocusItems(
       burstStats.reduce((sum, stat) => sum + stat.burstCount, 0),
     );
 
-  const scored = decayed
-    .filter(
-      (stat) =>
-        (stat.type === "word" && stat.attempts >= 3) ||
-        (stat.type === "biword" && stat.attempts >= 2),
-    )
+  const qualifyingItems = decayed.filter(
+    (stat) =>
+      (stat.type === "word" && stat.attempts >= 3) ||
+      (stat.type === "biword" && stat.attempts >= 2),
+  );
+  const totalAttempts = qualifyingItems.reduce((sum, s) => sum + s.attempts, 0);
+  const totalMisses = qualifyingItems.reduce((sum, s) => sum + s.misses, 0);
+  const summary: PracticeStatsSummary = {
+    totalWords: decayed.filter((s) => s.type === "word").length,
+    totalBiwords: decayed.filter((s) => s.type === "biword").length,
+    missRate: roundStat(totalAttempts > 0 ? totalMisses / totalAttempts : 0),
+    averageBurst: roundStat(baselineBurst),
+  };
+
+  const scored = qualifyingItems
     .map((stat) => scoreItem(stat, baselineBurst))
     .filter((stat) => stat.score > 0)
     .sort((a, b) => b.score - a.score);
 
   return {
+    summary,
     words: scored.filter((stat) => stat.type === "word").slice(0, 30),
     biwords: scored.filter((stat) => stat.type === "biword").slice(0, 30),
   };
