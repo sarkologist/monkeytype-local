@@ -24,6 +24,7 @@ Core feature shipped. See code for design details; this doc tracks what's pendin
 - Configurable focused-practice item count — `focusedPracticeItemCount` config (3–20, default 10) replaces hardcoded top-10. Session length clamped to 20–100 via formula `2 * perCat * (1 + fillerRatio)`.
 - Configurable word count + filler probability — `focusedPracticeWordCount` (10–100, default 50) sets session length directly; `focusedPracticeFillerProbability` (0–1, default 0.3) is the per-word probability of filler. Pool built by score-weighted sampling with replacement; session limit = word count exactly. Replaces rank-based `weightedItems` and the old item-count formula.
 - Remove top-N cutoff — dropped `.slice(0, 30)` from `getFocusItems`; full qualifying pool now returned, long tail naturally low-probability via score-weighted sampling.
+- Bootstrap from filler — removed dead-end; backfill shortfall into filler so session length always equals `focusedPracticeWordCount`; one-line notice when zero qualifying items; filler uses Zipf over full list when language is `orderedByFrequency`, falls back to uniform top-100 otherwise.
 
 ## Pending
 

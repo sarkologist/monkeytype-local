@@ -17,3 +17,4 @@ See:
   - Backend: `getFocusItems` now returns a `summary` (totalWords, totalBiwords, missRate, averageBurst)
   - Contract: `GetPracticeStatsResponse` includes `summary: PracticeStatsSummary`
   - Frontend: new `FocusedPracticeStats` component shown only when `isAccountPage=true`
+- Bootstrap from filler — removed dead-end; session always starts; shortfall backfills into filler; one-line notice when zero qualifying items; filler uses Zipf over full list when `orderedByFrequency`, uniform top-100 otherwise.

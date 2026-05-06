@@ -12,6 +12,7 @@ import { FocusItem } from "@monkeytype/contracts/users";
 import { before } from "./practise-words";
 import { configEvent } from "../events/config";
 import { restartTestEvent } from "../events/test";
+import { zipfyRandomArrayIndex } from "../utils/misc";
 
 let focusedPracticeActive = false;
 
@@ -51,29 +52,37 @@ export async function init(): Promise<boolean> {
 
   const { words, biwords } = response.body.data;
 
-  if (words.length === 0 && biwords.length === 0) {
-    showNoticeNotification("Not enough focused practice data yet.");
-    return false;
-  }
-
   const targetLength = Config.focusedPracticeWordCount;
   const practiceCount = Math.round(
     targetLength * (1 - Config.focusedPracticeFillerProbability),
   );
-  const fillerCount = targetLength - practiceCount;
+  let fillerCount = targetLength - practiceCount;
   const wordSlots = Math.ceil(practiceCount / 2);
   const biwordSlots = practiceCount - wordSlots;
 
+  if (words.length === 0 && biwords.length === 0) {
+    showNoticeNotification(
+      "Building up your stats — using common words for now.",
+    );
+  }
+
+  const sampledWords = sampleWeighted(words, wordSlots);
+  const sampledBiwords = sampleWeighted(biwords, biwordSlots);
+  fillerCount +=
+    wordSlots - sampledWords.length + (biwordSlots - sampledBiwords.length);
+
   const language = await JSONData.getLanguage(Config.language);
-  const fillerPool = language.words.slice(0, 100);
+  const pickFiller = language.orderedByFrequency
+    ? () => language.words[zipfyRandomArrayIndex(language.words.length)] ?? ""
+    : (() => {
+        const pool = language.words.slice(0, 100);
+        return () => pool[Math.floor(Math.random() * pool.length)] ?? "";
+      })();
 
   const pool = [
-    ...sampleWeighted(words, wordSlots),
-    ...sampleWeighted(biwords, biwordSlots),
-    ...Array.from(
-      { length: fillerCount },
-      () => fillerPool[Math.floor(Math.random() * fillerPool.length)] ?? "",
-    ),
+    ...sampledWords,
+    ...sampledBiwords,
+    ...Array.from({ length: fillerCount }, pickFiller),
   ].filter(Boolean);
 
   before.mode = before.mode ?? Config.mode;

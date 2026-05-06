@@ -16,4 +16,5 @@ Agent note: after implementing any focused-practice change, update this file and
 - Query returns all qualifying items (score > 0), sorted by score descending; long tail is naturally low-probability via score-weighted sampling.
 - Session pool is built by score-weighted sampling with replacement: `focusedPracticeWordCount` total words, split evenly between words and biwords for the practice fraction, with filler words filling the remainder at probability `focusedPracticeFillerProbability`. Session limit equals word count exactly.
 - Entry points are the global commandline `Focused practice` command and the existing result-screen practice command subgroup as `focused`.
-- The global entry point is always visible; insufficient historical data is handled after execution with a notice.
+- The global entry point is always visible and always starts a session. If there's no qualifying data, the session bootstraps from filler and a one-line notice is shown. Unfilled practice slots in either category backfill into filler so total session length always equals `focusedPracticeWordCount`.
+- Filler is sampled Zipf-weighted (using `zipfyRandomArrayIndex`) from the full language word list when `language.orderedByFrequency` is true; otherwise uniform over the first 100 words as a fallback.
