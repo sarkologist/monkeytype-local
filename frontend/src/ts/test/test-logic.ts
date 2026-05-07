@@ -790,6 +790,28 @@ function addPracticeEntry(
   entries.set(key, entry);
 }
 
+function collectCharSubstitutions(
+  target: string,
+  typed: string,
+  counts: Map<string, { target: string; typed: string; count: number }>,
+): void {
+  const len = Math.min(target.length, typed.length);
+  for (let i = 0; i < len; i++) {
+    const t = target[i] as string;
+    const k = typed[i] as string;
+    if (t === k) continue;
+    if (!/^[a-zÀ-ɏ]$/i.test(t)) continue;
+    if (!/^[a-zÀ-ɏ]$/i.test(k)) continue;
+    const id = `${t}>${k}`;
+    const existing = counts.get(id);
+    if (existing === undefined) {
+      counts.set(id, { target: t, typed: k, count: 1 });
+    } else {
+      existing.count++;
+    }
+  }
+}
+
 function buildPracticeStats(): CompletedEventPracticeStats | undefined {
   const focusedActive = FocusedPractice.isFocusedPracticeActive();
   if (focusedActive) {
@@ -809,6 +831,10 @@ function buildPracticeStats(): CompletedEventPracticeStats | undefined {
 
   const words = new Map<string, PracticeStatEntry>();
   const biwords = new Map<string, PracticeStatEntry>();
+  const chars = new Map<
+    string,
+    { target: string; typed: string; count: number }
+  >();
 
   typedWords.forEach((typedWord, index) => {
     const target = normalizePracticeKey(TestWords.words.getText(index, true));
@@ -818,6 +844,7 @@ function buildPracticeStats(): CompletedEventPracticeStats | undefined {
     const burst = TestInput.burstHistory[index] ?? 0;
 
     addPracticeEntry(words, target, missed, burst);
+    collectCharSubstitutions(target, typed, chars);
 
     if (index > 0) {
       const previous = normalizePracticeKey(
@@ -833,6 +860,9 @@ function buildPracticeStats(): CompletedEventPracticeStats | undefined {
     words: [...words.values()].slice(0, 200),
     biwords: [...biwords.values()].slice(0, 200),
   };
+  if (chars.size > 0) {
+    practiceStats.chars = [...chars.values()].slice(0, 200);
+  }
   if (TestState.isRepeated) {
     practiceStats.weight = Config.focusedPracticeRepeatedTestWeight;
   } else if (focusedActive) {

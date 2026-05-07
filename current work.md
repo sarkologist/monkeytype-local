@@ -14,10 +14,11 @@ Stats UI improvements (highest-leverage gaps from assessment):
 - [x] attempts column + practice volume tile
 - [x] graduated items list
 - [x] weekly summary snapshots + trendline
-- [ ] character-level error tracking
+- [x] character-level error tracking
 
 ## Done
 
+- Character-level error tracking: frontend collects per-position substitutions (target → typed) for each typed word in `buildPracticeStats`, restricted to alpha chars (skips digits/punctuation that would already be stripped by normalize). `CompletedEventPracticeStats.chars` carries them; new `userCharSubstitutions` collection persists per-(uid, language, target, typed) counts with same 30-day decay. `getFocusItems` now returns `topSubstitutions` (top 10 by decayed count); rendered as "top mistakes" section in the stats UI.
 - Weekly summary snapshots + trendline: new `userPracticeSnapshots` collection, taken opportunistically inside `updateStats` when prior snapshot for uid+lang is ≥ 7 days old (or absent); each snapshot stores the same `PracticeStatsSummary` shape; capped at 26 most recent. New `GET /users/practiceStats/history` endpoint, sparkline trendline UI tiles for miss rate, avg burst, attempts logged, and items tracked.
 - Graduated items list: `UserPracticeStat` now persists `peakMissRate` and `peakMissRateAt`, updated lazily inside `updateEntry` when a fresh post-decay miss rate exceeds the prior peak (gated by `PEAK_MIN_ATTEMPTS=5`). `getFocusItems` returns a `graduated[]` of items where peak ≥ 10% and current decayed miss rate < 5% with attempts ≥ 5; rendered in a "graduated" section showing peak vs now, so user gets positive feedback for words they've conquered.
 - Surface practice volume + per-item attempts: `summary.totalAttempts` added (sum of decayed attempts on qualifying items), shown as "attempts logged" tile; per-item `attempts` column added to top-struggling table so users can see sample size context for each score.

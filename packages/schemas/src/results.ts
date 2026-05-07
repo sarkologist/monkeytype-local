@@ -67,12 +67,22 @@ const PracticeStatEntrySchema = z.object({
 });
 export type PracticeStatEntry = z.infer<typeof PracticeStatEntrySchema>;
 
+const PracticeCharSubstitutionSchema = z.object({
+  target: z.string().min(1).max(4),
+  typed: z.string().min(1).max(4),
+  count: z.number().nonnegative().max(1000),
+});
+export type PracticeCharSubstitution = z.infer<
+  typeof PracticeCharSubstitutionSchema
+>;
+
 export const CompletedEventPracticeStatsSchema = z.object({
   source: z.literal("generated"),
   language: LanguageSchema,
   weight: z.number().nonnegative().optional(),
   words: z.array(PracticeStatEntrySchema).max(200),
   biwords: z.array(PracticeStatEntrySchema).max(200),
+  chars: z.array(PracticeCharSubstitutionSchema).max(200).optional(),
 });
 export type CompletedEventPracticeStats = z.infer<
   typeof CompletedEventPracticeStatsSchema

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import * as PracticeStatsDal from "../../../src/dal/user-practice-stats";
 import * as PracticeSnapshotsDal from "../../../src/dal/user-practice-snapshots";
+import * as CharSubstitutionsDal from "../../../src/dal/user-char-substitutions";
 import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
 
 const uid = "practice-test-user";
@@ -37,6 +38,7 @@ describe("UserPracticeStatsDal", () => {
   afterEach(async () => {
     await PracticeStatsDal.getCollection().deleteMany({ uid });
     await PracticeSnapshotsDal.getCollection().deleteMany({ uid });
+    await CharSubstitutionsDal.getCollection().deleteMany({ uid });
   });
 
   it("increments repeated keys", async () => {
@@ -169,6 +171,40 @@ describe("UserPracticeStatsDal", () => {
 
     const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
     expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
+  });
+
+  it("aggregates and surfaces top character substitutions", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        ...stats(1, 0),
+        chars: [
+          { target: "e", typed: "r", count: 3 },
+          { target: "a", typed: "s", count: 1 },
+        ],
+      },
+      1000,
+    );
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        ...stats(1, 0),
+        chars: [{ target: "e", typed: "r", count: 2 }],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    expect(focus.topSubstitutions[0]).toMatchObject({
+      target: "e",
+      typed: "r",
+      count: 5,
+    });
+    expect(focus.topSubstitutions[1]).toMatchObject({
+      target: "a",
+      typed: "s",
+      count: 1,
+    });
   });
 
   it("records weekly snapshots", async () => {

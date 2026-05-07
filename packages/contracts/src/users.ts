@@ -58,6 +58,13 @@ const GraduatedItemSchema = z.object({
 });
 export type GraduatedItem = z.infer<typeof GraduatedItemSchema>;
 
+const TopSubstitutionSchema = z.object({
+  target: z.string(),
+  typed: z.string(),
+  count: z.number().nonnegative(),
+});
+export type TopSubstitution = z.infer<typeof TopSubstitutionSchema>;
+
 export const GetPracticeStatsQuerySchema = z.object({
   language: LanguageSchema,
 });
@@ -78,6 +85,7 @@ export const GetPracticeStatsResponseSchema = responseWithData(
     words: z.array(FocusItemSchema),
     biwords: z.array(FocusItemSchema),
     graduated: z.array(GraduatedItemSchema),
+    topSubstitutions: z.array(TopSubstitutionSchema),
   }),
 );
 export type GetPracticeStatsResponse = z.infer<

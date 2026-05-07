@@ -3,6 +3,7 @@ import * as db from "../init/db";
 import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
 import { Language } from "@monkeytype/schemas/languages";
 import * as PracticeSnapshotsDAL from "./user-practice-snapshots";
+import * as CharSubstitutionsDAL from "./user-char-substitutions";
 
 type PracticeStatType = "word" | "biword";
 
@@ -160,6 +161,16 @@ export async function updateStats(
     );
   }
 
+  if (practiceStats.chars !== undefined && practiceStats.chars.length > 0) {
+    await CharSubstitutionsDAL.updateStats(
+      uid,
+      practiceStats.language,
+      practiceStats.chars,
+      practiceStats.weight,
+      now,
+    );
+  }
+
   if (
     await PracticeSnapshotsDAL.shouldTakeSnapshot(
       uid,
@@ -277,10 +288,16 @@ export async function getFocusItems(
   words: FocusItem[];
   biwords: FocusItem[];
   graduated: GraduatedItem[];
+  topSubstitutions: CharSubstitutionsDAL.TopSubstitution[];
 }> {
   const stats = await getCollection().find({ uid, language }).toArray();
   const decayed = decayAll(stats, now);
   const { summary, baselineBurst, qualifyingItems } = summarizeDecayed(decayed);
+  const topSubstitutions = await CharSubstitutionsDAL.getTopSubstitutions(
+    uid,
+    language,
+    now,
+  );
 
   const scored = qualifyingItems
     .map((stat) => scoreItem(stat, baselineBurst))
@@ -316,5 +333,6 @@ export async function getFocusItems(
     words: scored.filter((stat) => stat.type === "word"),
     biwords: scored.filter((stat) => stat.type === "biword"),
     graduated,
+    topSubstitutions,
   };
 }

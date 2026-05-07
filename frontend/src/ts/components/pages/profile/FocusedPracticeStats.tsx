@@ -252,6 +252,25 @@ export function FocusedPracticeStats(): JSXElement {
                 </div>
               </div>
             </Show>
+            <Show when={d().topSubstitutions.length > 0}>
+              <div class="flex flex-col gap-2">
+                <div class="text-sm text-sub">top mistakes</div>
+                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-6 gap-y-1 text-sm">
+                  <div class="text-xs text-sub">typed → instead of</div>
+                  <div class="text-xs text-sub">count</div>
+                  <div></div>
+                  <For each={d().topSubstitutions}>
+                    {(item) => (
+                      <>
+                        <div class="font-mono">{`${item.typed} → ${item.target}`}</div>
+                        <div>{Math.round(item.count)}</div>
+                        <div></div>
+                      </>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
           </Show>
         </div>
       )}
