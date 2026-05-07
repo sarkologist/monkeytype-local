@@ -60,6 +60,12 @@ export function FocusedPracticeStats(): JSXElement {
                 </div>
               </div>
               <div class="flex flex-col">
+                <div class="text-em-sm text-sub">attempts logged</div>
+                <div class="text-em-2xl leading-8">
+                  {Math.round(d().summary.totalAttempts).toLocaleString()}
+                </div>
+              </div>
+              <div class="flex flex-col">
                 <div class="text-em-sm text-sub">miss rate</div>
                 <div class="text-em-2xl leading-8">
                   {`${(d().summary.missRate * 100).toFixed(1)}%`}
@@ -77,9 +83,10 @@ export function FocusedPracticeStats(): JSXElement {
             <Show when={topItems().length > 0}>
               <div class="flex flex-col gap-2">
                 <div class="text-sm text-sub">top struggling</div>
-                <div class="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-6 gap-y-1 text-sm">
+                <div class="grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-x-6 gap-y-1 text-sm">
                   <div class="text-xs text-sub">word</div>
                   <div class="text-xs text-sub">type</div>
+                  <div class="text-xs text-sub">attempts</div>
                   <div class="text-xs text-sub">miss rate</div>
                   <div class="text-xs text-sub">avg burst</div>
                   <div class="text-xs text-sub">score</div>
@@ -88,6 +95,7 @@ export function FocusedPracticeStats(): JSXElement {
                       <>
                         <div class="font-mono">{item.key}</div>
                         <div class="text-sub">{item.type}</div>
+                        <div>{Math.round(item.attempts)}</div>
                         <div>
                           {item.attempts > 0
                             ? `${((item.misses / item.attempts) * 100).toFixed(1)}%`

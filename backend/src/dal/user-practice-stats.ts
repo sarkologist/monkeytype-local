@@ -154,6 +154,7 @@ function scoreItem(stat: UserPracticeStat, baselineBurst: number): FocusItem {
 type PracticeStatsSummary = {
   totalWords: number;
   totalBiwords: number;
+  totalAttempts: number;
   missRate: number;
   averageBurst: number;
 };
@@ -193,6 +194,7 @@ export async function getFocusItems(
   const summary: PracticeStatsSummary = {
     totalWords: decayed.filter((s) => s.type === "word").length,
     totalBiwords: decayed.filter((s) => s.type === "biword").length,
+    totalAttempts: roundStat(totalAttempts),
     missRate: roundStat(totalAttempts > 0 ? totalMisses / totalAttempts : 0),
     averageBurst: roundStat(baselineBurst),
   };

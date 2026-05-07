@@ -56,6 +56,7 @@ export type GetPracticeStatsQuery = z.infer<typeof GetPracticeStatsQuerySchema>;
 const PracticeStatsSummarySchema = z.object({
   totalWords: z.number().nonnegative(),
   totalBiwords: z.number().nonnegative(),
+  totalAttempts: z.number().nonnegative(),
   missRate: z.number().nonnegative(),
   averageBurst: z.number().nonnegative(),
 });
