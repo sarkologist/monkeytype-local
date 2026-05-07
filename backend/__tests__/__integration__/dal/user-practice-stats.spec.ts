@@ -200,6 +200,42 @@ describe("UserPracticeStatsDal", () => {
     expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
   });
 
+  it("amplifies score for items with more accumulated evidence", async () => {
+    // both items at 30% miss rate, but one has 80 attempts and one has 8
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "highevi",
+            attempts: 80,
+            misses: 24,
+            burstSum: 16000,
+            burstCount: 80,
+          },
+          {
+            key: "lowevi",
+            attempts: 8,
+            misses: 2.4,
+            burstSum: 1600,
+            burstCount: 8,
+          },
+        ],
+        biwords: [],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const high = focus.words.find((w) => w.key === "highevi");
+    const low = focus.words.find((w) => w.key === "lowevi");
+    expect(high).toBeDefined();
+    expect(low).toBeDefined();
+    expect(high!.score).toBeGreaterThan(low!.score);
+  });
+
   it("boosts recently identified weaknesses over old ones", async () => {
     const day = 24 * 60 * 60 * 1000;
     // recently struggled word — peak set at "now"

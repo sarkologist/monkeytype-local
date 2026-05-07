@@ -18,6 +18,7 @@ Stats UI improvements (highest-leverage gaps from assessment):
 
 ## Done
 
+- Evidence amplification: high-attempt items now amplify their score up to 2× via `evidenceMultiplier = min(2, 1 + 0.5·log10(attempts/8))`. An item at 30% miss across 80 attempts ranks 1.5× higher than the same rate at 8 attempts — sample-size certainty is finally a signal.
 - Retention interleaving: backend exposes `retentionWords`/`retentionBiwords` (graduated set, scored by peakMissRate); frontend allocates ~10% of practice slots to retention with `allocateSlots` (collapses to 0 when no graduated items exist, falls back to all-retention when no struggle items exist). Retention testing without re-creating struggle.
 - Recency boost in scoring: items whose `peakMissRateAt` is recent get up to a 50% multiplier on the (miss + slow) base score, fading linearly to baseline over 30 days. Freshly identified weaknesses get more iterations than long-settled ones.
 - Feed char substitutions into selection: `getCharStats` now returns both `topSubstitutions` (display) and `charWeights` (max-normalized per-target-char weights). Word/biword scoring adds `0.15 × charAffinity`, where affinity is the mean weight across an item's alpha chars. Items composed of the user's known-bad chars now enter the pool even with low miss rate, so practice is composed around the keys they actually fail on.

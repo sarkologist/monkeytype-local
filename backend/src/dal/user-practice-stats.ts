@@ -191,6 +191,8 @@ export async function updateStats(
 const CHAR_AFFINITY_WEIGHT = 0.15;
 const RECENCY_BOOST = 0.5;
 const RECENCY_WINDOW_DAYS = 30;
+const CONFIDENCE_RAMP_ATTEMPTS = 8;
+const EVIDENCE_MAX_MULTIPLIER = 2;
 
 function charAffinity(
   key: string,
@@ -216,6 +218,12 @@ function recencyMultiplier(
   return 1 + RECENCY_BOOST * freshness;
 }
 
+function evidenceMultiplier(attempts: number): number {
+  if (attempts <= CONFIDENCE_RAMP_ATTEMPTS) return 1;
+  const log = Math.log10(attempts / CONFIDENCE_RAMP_ATTEMPTS);
+  return Math.min(EVIDENCE_MAX_MULTIPLIER, 1 + 0.5 * log);
+}
+
 function scoreItem(
   stat: UserPracticeStat,
   baselineBurst: number,
@@ -231,10 +239,12 @@ function scoreItem(
     baselineBurst > 0 && averageBurst !== undefined
       ? Math.max(0, (baselineBurst - averageBurst) / baselineBurst)
       : 0;
-  const confidence = Math.min(1, attempts / 8);
+  const confidence = Math.min(1, attempts / CONFIDENCE_RAMP_ATTEMPTS);
   const recency = recencyMultiplier(stat.peakMissRateAt, now);
+  const evidence = evidenceMultiplier(attempts);
   const affinity = charAffinity(stat.key, charWeights);
-  const baseScore = confidence * (missRate * 0.7 + slowScore * 0.3) * recency;
+  const baseScore =
+    confidence * (missRate * 0.7 + slowScore * 0.3) * recency * evidence;
   const score = baseScore + CHAR_AFFINITY_WEIGHT * affinity;
 
   return {
