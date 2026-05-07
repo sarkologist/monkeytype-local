@@ -97,6 +97,7 @@ export type CharStats = {
 export async function getCharStats(
   uid: string,
   language: Language,
+  charOccurrences: Record<string, number>,
   now = Date.now(),
 ): Promise<CharStats> {
   const docs = await getCollection().find({ uid, language }).toArray();
@@ -115,21 +116,20 @@ export async function getCharStats(
   for (const d of decayed) {
     targetCounts[d.target] = (targetCounts[d.target] ?? 0) + d.count;
   }
-  const max = Math.max(0, ...Object.values(targetCounts));
+  const targetRates: Record<string, number> = {};
+  for (const [c, count] of Object.entries(targetCounts)) {
+    const occurrences = charOccurrences[c] ?? 0;
+    if (occurrences > 0) {
+      targetRates[c] = count / occurrences;
+    }
+  }
+  const max = Math.max(0, ...Object.values(targetRates));
   const charWeights: Record<string, number> = {};
   if (max > 0) {
-    for (const [c, count] of Object.entries(targetCounts)) {
-      charWeights[c] = roundStat(count / max);
+    for (const [c, rate] of Object.entries(targetRates)) {
+      charWeights[c] = roundStat(rate / max);
     }
   }
 
   return { topSubstitutions, charWeights };
-}
-
-export async function getTopSubstitutions(
-  uid: string,
-  language: Language,
-  now = Date.now(),
-): Promise<TopSubstitution[]> {
-  return (await getCharStats(uid, language, now)).topSubstitutions;
 }

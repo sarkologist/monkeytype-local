@@ -304,6 +304,20 @@ type DecayedStat = UserPracticeStat & {
   burstCount: number;
 };
 
+function computeCharOccurrences(
+  decayed: DecayedStat[],
+): Record<string, number> {
+  const occurrences: Record<string, number> = {};
+  for (const stat of decayed) {
+    if (stat.type !== "word") continue;
+    for (const c of stat.key) {
+      if (!/^[a-zÀ-ɏ]$/i.test(c)) continue;
+      occurrences[c] = (occurrences[c] ?? 0) + stat.attempts;
+    }
+  }
+  return occurrences;
+}
+
 function decayAll(stats: UserPracticeStat[], now: number): DecayedStat[] {
   return stats.map((stat) => ({
     ...stat,
@@ -379,8 +393,14 @@ export async function getFocusItems(
   const stats = await getCollection().find({ uid, language }).toArray();
   const decayed = decayAll(stats, now);
   const { summary, baselineBurst, qualifyingItems } = summarizeDecayed(decayed);
+  const charOccurrences = computeCharOccurrences(decayed);
   const { topSubstitutions, charWeights } =
-    await CharSubstitutionsDAL.getCharStats(uid, language, now);
+    await CharSubstitutionsDAL.getCharStats(
+      uid,
+      language,
+      charOccurrences,
+      now,
+    );
 
   const scored = qualifyingItems
     .map((stat) => scoreItem(stat, baselineBurst, charWeights, now))

@@ -369,6 +369,48 @@ describe("UserPracticeStatsDal", () => {
     expect(lull).toBeUndefined();
   });
 
+  it("normalizes char weights by occurrence rate, not raw count", async () => {
+    // raw count: e=30 > t=10
+    // occurrences: e=200 (100 attempts × 2), t=20 (10 attempts × 2)
+    // rate: e=30/200=0.15, t=10/20=0.5 → 't' is the per-occurrence weakness
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "ee",
+            attempts: 100,
+            misses: 0,
+            burstSum: 20000,
+            burstCount: 100,
+          },
+          {
+            key: "tt",
+            attempts: 10,
+            misses: 0,
+            burstSum: 2000,
+            burstCount: 10,
+          },
+        ],
+        biwords: [],
+        chars: [
+          { target: "e", typed: "r", count: 30 },
+          { target: "t", typed: "y", count: 10 },
+        ],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const ee = focus.words.find((w) => w.key === "ee");
+    const tt = focus.words.find((w) => w.key === "tt");
+    expect(ee).toBeDefined();
+    expect(tt).toBeDefined();
+    expect(tt!.score).toBeGreaterThan(ee!.score);
+  });
+
   it("aggregates and surfaces top character substitutions", async () => {
     await PracticeStatsDal.updateStats(
       uid,
