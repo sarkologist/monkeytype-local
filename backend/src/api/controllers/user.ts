@@ -1,5 +1,6 @@
 import * as UserDAL from "../../dal/user";
 import * as UserPracticeStatsDAL from "../../dal/user-practice-stats";
+import * as UserPracticeSnapshotsDAL from "../../dal/user-practice-snapshots";
 import MonkeyError, {
   getErrorMessage,
   isFirebaseError,
@@ -65,6 +66,7 @@ import {
   GetFriendsResponse,
   GetPersonalBestsQuery,
   GetPersonalBestsResponse,
+  GetPracticeStatsHistoryResponse,
   GetPracticeStatsQuery,
   GetPracticeStatsResponse,
   GetProfilePathParams,
@@ -873,6 +875,25 @@ export async function updatePracticeStats(
 
   await UserPracticeStatsDAL.updateStats(uid, req.body);
   return new MonkeyResponse("Practice stats updated", null);
+}
+
+export async function getPracticeStatsHistory(
+  req: MonkeyRequest<GetPracticeStatsQuery>,
+): Promise<GetPracticeStatsHistoryResponse> {
+  const { uid } = req.ctx.decodedToken;
+  const { language } = req.query;
+
+  const snapshots = await UserPracticeSnapshotsDAL.getSnapshots(uid, language);
+  return new MonkeyResponse("Practice stats history retrieved", {
+    snapshots: snapshots.map((s) => ({
+      takenAt: s.takenAt,
+      totalWords: s.totalWords,
+      totalBiwords: s.totalBiwords,
+      totalAttempts: s.totalAttempts,
+      missRate: s.missRate,
+      averageBurst: s.averageBurst,
+    })),
+  });
 }
 
 export async function getFavoriteQuotes(

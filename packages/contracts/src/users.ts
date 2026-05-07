@@ -90,6 +90,25 @@ export type UpdatePracticeStatsRequest = z.infer<
   typeof UpdatePracticeStatsRequestSchema
 >;
 
+const PracticeStatsSnapshotSchema = z.object({
+  takenAt: z.number().nonnegative(),
+  totalWords: z.number().nonnegative(),
+  totalBiwords: z.number().nonnegative(),
+  totalAttempts: z.number().nonnegative(),
+  missRate: z.number().nonnegative(),
+  averageBurst: z.number().nonnegative(),
+});
+export type PracticeStatsSnapshot = z.infer<typeof PracticeStatsSnapshotSchema>;
+
+export const GetPracticeStatsHistoryResponseSchema = responseWithData(
+  z.object({
+    snapshots: z.array(PracticeStatsSnapshotSchema),
+  }),
+);
+export type GetPracticeStatsHistoryResponse = z.infer<
+  typeof GetPracticeStatsHistoryResponseSchema
+>;
+
 export const GetUserResponseSchema = responseWithData(
   UserSchema.extend({
     inboxUnreadSize: z.number().int().nonnegative(),
@@ -781,6 +800,19 @@ export const usersContract = c.router(
       },
       metadata: meta({
         rateLimit: "resultsAdd",
+      }),
+    },
+    getPracticeStatsHistory: {
+      summary: "get practice stats history",
+      description: "Gets weekly summary snapshots for a language",
+      method: "GET",
+      path: "/practiceStats/history",
+      query: GetPracticeStatsQuerySchema.strict(),
+      responses: {
+        200: GetPracticeStatsHistoryResponseSchema,
+      },
+      metadata: meta({
+        rateLimit: "userGet",
       }),
     },
     setStreakHourOffset: {

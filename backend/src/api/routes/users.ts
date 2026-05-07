@@ -91,6 +91,10 @@ export default s.router(usersContract, {
   updatePracticeStats: {
     handler: async (r) => callController(UserController.updatePracticeStats)(r),
   },
+  getPracticeStatsHistory: {
+    handler: async (r) =>
+      callController(UserController.getPracticeStatsHistory)(r),
+  },
   setStreakHourOffset: {
     handler: async (r) => callController(UserController.setStreakHourOffset)(r),
   },

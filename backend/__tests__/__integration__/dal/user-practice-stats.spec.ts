@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import * as PracticeStatsDal from "../../../src/dal/user-practice-stats";
+import * as PracticeSnapshotsDal from "../../../src/dal/user-practice-snapshots";
 import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
 
 const uid = "practice-test-user";
@@ -35,6 +36,7 @@ function stats(
 describe("UserPracticeStatsDal", () => {
   afterEach(async () => {
     await PracticeStatsDal.getCollection().deleteMany({ uid });
+    await PracticeSnapshotsDal.getCollection().deleteMany({ uid });
   });
 
   it("increments repeated keys", async () => {
@@ -167,5 +169,17 @@ describe("UserPracticeStatsDal", () => {
 
     const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
     expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
+  });
+
+  it("records weekly snapshots", async () => {
+    const week = 7 * 24 * 60 * 60 * 1000;
+    await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);
+    await PracticeStatsDal.updateStats(uid, stats(2, 0), 1000 + 1000);
+    await PracticeStatsDal.updateStats(uid, stats(2, 0), 1000 + week + 1);
+
+    const snaps = await PracticeSnapshotsDal.getSnapshots(uid, "english");
+    expect(snaps).toHaveLength(2);
+    expect(snaps[0]?.takenAt).toBe(1000);
+    expect(snaps[1]?.takenAt).toBe(1000 + week + 1);
   });
 });

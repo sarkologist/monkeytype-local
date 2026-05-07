@@ -2,6 +2,7 @@ import { Collection, ObjectId } from "mongodb";
 import * as db from "../init/db";
 import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
 import { Language } from "@monkeytype/schemas/languages";
+import * as PracticeSnapshotsDAL from "./user-practice-snapshots";
 
 type PracticeStatType = "word" | "biword";
 
@@ -158,6 +159,22 @@ export async function updateStats(
       now,
     );
   }
+
+  if (
+    await PracticeSnapshotsDAL.shouldTakeSnapshot(
+      uid,
+      practiceStats.language,
+      now,
+    )
+  ) {
+    const summary = await computeSummary(uid, practiceStats.language, now);
+    await PracticeSnapshotsDAL.recordSnapshot(
+      uid,
+      practiceStats.language,
+      summary,
+      now,
+    );
+  }
 }
 
 function scoreItem(stat: UserPracticeStat, baselineBurst: number): FocusItem {
@@ -196,24 +213,28 @@ const GRADUATED_PEAK_THRESHOLD = 0.1;
 const GRADUATED_CURRENT_THRESHOLD = 0.05;
 const GRADUATED_MIN_ATTEMPTS = 5;
 
-export async function getFocusItems(
-  uid: string,
-  language: Language,
-  now = Date.now(),
-): Promise<{
-  summary: PracticeStatsSummary;
-  words: FocusItem[];
-  biwords: FocusItem[];
-  graduated: GraduatedItem[];
-}> {
-  const stats = await getCollection().find({ uid, language }).toArray();
-  const decayed = stats.map((stat) => ({
+type DecayedStat = UserPracticeStat & {
+  attempts: number;
+  misses: number;
+  burstSum: number;
+  burstCount: number;
+};
+
+function decayAll(stats: UserPracticeStat[], now: number): DecayedStat[] {
+  return stats.map((stat) => ({
     ...stat,
     attempts: decayValue(stat.attempts, stat.decayedAt, now),
     misses: decayValue(stat.misses, stat.decayedAt, now),
     burstSum: decayValue(stat.burstSum, stat.decayedAt, now),
     burstCount: decayValue(stat.burstCount, stat.decayedAt, now),
   }));
+}
+
+function summarizeDecayed(decayed: DecayedStat[]): {
+  summary: PracticeStatsSummary;
+  baselineBurst: number;
+  qualifyingItems: DecayedStat[];
+} {
   const burstStats = decayed.filter((stat) => stat.burstCount > 0);
   const baselineBurst =
     burstStats.reduce((sum, stat) => sum + stat.burstSum, 0) /
@@ -221,7 +242,6 @@ export async function getFocusItems(
       1,
       burstStats.reduce((sum, stat) => sum + stat.burstCount, 0),
     );
-
   const qualifyingItems = decayed.filter(
     (stat) =>
       (stat.type === "word" && stat.attempts >= 3) ||
@@ -236,6 +256,31 @@ export async function getFocusItems(
     missRate: roundStat(totalAttempts > 0 ? totalMisses / totalAttempts : 0),
     averageBurst: roundStat(baselineBurst),
   };
+  return { summary, baselineBurst, qualifyingItems };
+}
+
+export async function computeSummary(
+  uid: string,
+  language: Language,
+  now: number,
+): Promise<PracticeStatsSummary> {
+  const stats = await getCollection().find({ uid, language }).toArray();
+  return summarizeDecayed(decayAll(stats, now)).summary;
+}
+
+export async function getFocusItems(
+  uid: string,
+  language: Language,
+  now = Date.now(),
+): Promise<{
+  summary: PracticeStatsSummary;
+  words: FocusItem[];
+  biwords: FocusItem[];
+  graduated: GraduatedItem[];
+}> {
+  const stats = await getCollection().find({ uid, language }).toArray();
+  const decayed = decayAll(stats, now);
+  const { summary, baselineBurst, qualifyingItems } = summarizeDecayed(decayed);
 
   const scored = qualifyingItems
     .map((stat) => scoreItem(stat, baselineBurst))

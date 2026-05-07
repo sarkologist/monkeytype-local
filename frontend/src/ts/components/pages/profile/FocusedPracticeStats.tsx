@@ -13,6 +13,70 @@ import { Formatting } from "../../../utils/format";
 
 const PAGE_SIZE = 10;
 
+function Sparkline(props: {
+  values: number[];
+  width?: number;
+  height?: number;
+}): JSXElement {
+  const width = () => props.width ?? 120;
+  const height = () => props.height ?? 28;
+  const points = createMemo(() => {
+    const vs = props.values;
+    if (vs.length < 2) return "";
+    const max = Math.max(...vs);
+    const min = Math.min(...vs);
+    const range = max - min || 1;
+    const w = width();
+    const h = height();
+    return vs
+      .map((v, i) => {
+        const x = (i / (vs.length - 1)) * w;
+        const y = h - ((v - min) / range) * h;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  });
+  return (
+    <svg
+      width={width()}
+      height={height()}
+      class="text-text"
+      viewBox={`0 0 ${width()} ${height()}`}
+    >
+      <polyline
+        points={points()}
+        fill="none"
+        stroke="currentColor"
+        // oxlint-disable-next-line no-unknown-property
+        stroke-width="1.5"
+        // oxlint-disable-next-line no-unknown-property
+        stroke-linejoin="round"
+        // oxlint-disable-next-line no-unknown-property
+        stroke-linecap="round"
+      ></polyline>
+    </svg>
+  );
+}
+
+function TrendTile(props: {
+  label: string;
+  values: number[];
+  formatValue: (v: number) => string;
+}): JSXElement {
+  const first = () => props.values[0] ?? 0;
+  const last = () => props.values[props.values.length - 1] ?? 0;
+  return (
+    <div class="flex flex-col gap-1">
+      <div class="text-em-sm text-sub">{props.label}</div>
+      <Sparkline values={props.values} />
+      <div class="flex justify-between text-xs text-sub">
+        <span>{props.formatValue(first())}</span>
+        <span class="text-text">{props.formatValue(last())}</span>
+      </div>
+    </div>
+  );
+}
+
 export function FocusedPracticeStats(): JSXElement {
   const language = () => getConfig.language;
   const [stats] = createResource(language, async (lang) => {
@@ -21,6 +85,13 @@ export function FocusedPracticeStats(): JSXElement {
     });
     if (response.status !== 200) return null;
     return response.body.data;
+  });
+  const [history] = createResource(language, async (lang) => {
+    const response = await Ape.users.getPracticeStatsHistory({
+      query: { language: lang },
+    });
+    if (response.status !== 200) return null;
+    return response.body.data.snapshots;
   });
 
   const format = createMemo(() => new Formatting(getConfig));
@@ -80,6 +151,44 @@ export function FocusedPracticeStats(): JSXElement {
                 </div>
               </Show>
             </div>
+            <Show when={(history() ?? []).length >= 2}>
+              {(_) => {
+                const snaps = () => history() ?? [];
+                return (
+                  <div class="flex flex-col gap-2">
+                    <div class="text-sm text-sub">
+                      {`trend (${snaps().length} weekly snapshots)`}
+                    </div>
+                    <div class="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
+                      <TrendTile
+                        label="miss rate"
+                        values={snaps().map((s) => s.missRate)}
+                        formatValue={(v) => `${(v * 100).toFixed(1)}%`}
+                      />
+                      <Show when={snaps().some((s) => s.averageBurst > 0)}>
+                        <TrendTile
+                          label="avg burst"
+                          values={snaps().map((s) => s.averageBurst)}
+                          formatValue={(v) => format().typingSpeed(v)}
+                        />
+                      </Show>
+                      <TrendTile
+                        label="attempts logged"
+                        values={snaps().map((s) => s.totalAttempts)}
+                        formatValue={(v) => Math.round(v).toLocaleString()}
+                      />
+                      <TrendTile
+                        label="items tracked"
+                        values={snaps().map(
+                          (s) => s.totalWords + s.totalBiwords,
+                        )}
+                        formatValue={(v) => Math.round(v).toString()}
+                      />
+                    </div>
+                  </div>
+                );
+              }}
+            </Show>
             <Show when={topItems().length > 0}>
               <div class="flex flex-col gap-2">
                 <div class="text-sm text-sub">top struggling</div>
