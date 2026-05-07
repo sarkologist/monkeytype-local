@@ -189,6 +189,8 @@ export async function updateStats(
 }
 
 const CHAR_AFFINITY_WEIGHT = 0.15;
+const RECENCY_BOOST = 0.5;
+const RECENCY_WINDOW_DAYS = 30;
 
 function charAffinity(
   key: string,
@@ -204,10 +206,21 @@ function charAffinity(
   return n > 0 ? sum / n : 0;
 }
 
+function recencyMultiplier(
+  peakMissRateAt: number | undefined,
+  now: number,
+): number {
+  if (peakMissRateAt === undefined) return 1;
+  const days = Math.max(0, now - peakMissRateAt) / DAY_MS;
+  const freshness = Math.max(0, 1 - days / RECENCY_WINDOW_DAYS);
+  return 1 + RECENCY_BOOST * freshness;
+}
+
 function scoreItem(
   stat: UserPracticeStat,
   baselineBurst: number,
   charWeights: Record<string, number>,
+  now: number,
 ): FocusItem {
   const attempts = Math.max(0, stat.attempts);
   const misses = Math.max(0, stat.misses);
@@ -219,10 +232,10 @@ function scoreItem(
       ? Math.max(0, (baselineBurst - averageBurst) / baselineBurst)
       : 0;
   const confidence = Math.min(1, attempts / 8);
+  const recency = recencyMultiplier(stat.peakMissRateAt, now);
   const affinity = charAffinity(stat.key, charWeights);
-  const score =
-    confidence * (missRate * 0.7 + slowScore * 0.3) +
-    CHAR_AFFINITY_WEIGHT * affinity;
+  const baseScore = confidence * (missRate * 0.7 + slowScore * 0.3) * recency;
+  const score = baseScore + CHAR_AFFINITY_WEIGHT * affinity;
 
   return {
     key: stat.key,
@@ -320,7 +333,7 @@ export async function getFocusItems(
     await CharSubstitutionsDAL.getCharStats(uid, language, now);
 
   const scored = qualifyingItems
-    .map((stat) => scoreItem(stat, baselineBurst, charWeights))
+    .map((stat) => scoreItem(stat, baselineBurst, charWeights, now))
     .filter((stat) => stat.score > 0)
     .sort((a, b) => b.score - a.score);
 

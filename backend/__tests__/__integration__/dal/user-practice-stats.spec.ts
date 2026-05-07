@@ -173,6 +173,59 @@ describe("UserPracticeStatsDal", () => {
     expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
   });
 
+  it("boosts recently identified weaknesses over old ones", async () => {
+    const day = 24 * 60 * 60 * 1000;
+    // recently struggled word — peak set at "now"
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "recent",
+            attempts: 8,
+            misses: 4,
+            burstSum: 1600,
+            burstCount: 8,
+          },
+        ],
+        biwords: [],
+      },
+      30 * day,
+    );
+    // older struggled word — peak set 30 days ago, by then decayed flat
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "stale",
+            attempts: 8,
+            misses: 4,
+            burstSum: 1600,
+            burstCount: 8,
+          },
+        ],
+        biwords: [],
+      },
+      0,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(
+      uid,
+      "english",
+      30 * day,
+    );
+    const recent = focus.words.find((w) => w.key === "recent");
+    const stale = focus.words.find((w) => w.key === "stale");
+    expect(recent).toBeDefined();
+    expect(stale).toBeDefined();
+    expect(recent!.score).toBeGreaterThan(stale!.score);
+  });
+
   it("boosts items composed of high-substitution chars", async () => {
     // user types "hello" 8 times perfectly — would score 0 normally
     // but mistypes 'e' frequently, so "hello" should still enter the pool
