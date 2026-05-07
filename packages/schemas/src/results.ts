@@ -63,6 +63,7 @@ const PracticeStatEntrySchema = z.object({
   attempts: z.number().nonnegative().max(1000),
   misses: z.number().nonnegative().max(1000),
   burstSum: z.number().nonnegative().max(100000),
+  burstSqSum: z.number().nonnegative().max(100_000_000).optional(),
   burstCount: z.number().nonnegative().max(1000),
 });
 export type PracticeStatEntry = z.infer<typeof PracticeStatEntrySchema>;

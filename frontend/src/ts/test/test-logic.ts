@@ -778,6 +778,7 @@ function addPracticeEntry(
       attempts: 0,
       misses: 0,
       burstSum: 0,
+      burstSqSum: 0,
       burstCount: 0,
     } satisfies PracticeStatEntry);
 
@@ -785,6 +786,7 @@ function addPracticeEntry(
   if (missed) entry.misses++;
   if (burst > 0) {
     entry.burstSum += burst;
+    entry.burstSqSum = (entry.burstSqSum ?? 0) + burst * burst;
     entry.burstCount++;
   }
   entries.set(key, entry);

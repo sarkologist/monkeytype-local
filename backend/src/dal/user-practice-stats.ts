@@ -16,6 +16,7 @@ export type UserPracticeStat = {
   attempts: number;
   misses: number;
   burstSum: number;
+  burstSqSum?: number;
   burstCount: number;
   lastSeen: number;
   decayedAt: number;
@@ -76,6 +77,7 @@ async function updateEntry(
     attempts: entry.attempts * weight,
     misses: entry.misses * weight,
     burstSum: entry.burstSum * weight,
+    burstSqSum: (entry.burstSqSum ?? 0) * weight,
     burstCount: entry.burstCount * weight,
   };
 
@@ -93,6 +95,7 @@ async function updateEntry(
       attempts,
       misses,
       burstSum: roundStat(weighted.burstSum),
+      burstSqSum: roundStat(weighted.burstSqSum),
       burstCount: roundStat(weighted.burstCount),
       lastSeen: now,
       decayedAt: now,
@@ -124,6 +127,10 @@ async function updateEntry(
       burstSum: roundStat(
         decayValue(existing.burstSum, existing.decayedAt, now) +
           weighted.burstSum,
+      ),
+      burstSqSum: roundStat(
+        decayValue(existing.burstSqSum ?? 0, existing.decayedAt, now) +
+          weighted.burstSqSum,
       ),
       burstCount: roundStat(
         decayValue(existing.burstCount, existing.decayedAt, now) +
@@ -224,6 +231,21 @@ function evidenceMultiplier(attempts: number): number {
   return Math.min(EVIDENCE_MAX_MULTIPLIER, 1 + 0.5 * log);
 }
 
+const INCONSISTENCY_CV_NORMALIZER = 0.5;
+const INCONSISTENCY_MIN_BURST_COUNT = 4;
+
+function inconsistencyScore(stat: UserPracticeStat): number {
+  if (stat.burstCount < INCONSISTENCY_MIN_BURST_COUNT) return 0;
+  const burstSqSum = stat.burstSqSum ?? 0;
+  if (burstSqSum === 0) return 0;
+  const mean = stat.burstSum / stat.burstCount;
+  if (mean <= 0) return 0;
+  const meanSq = burstSqSum / stat.burstCount;
+  const variance = Math.max(0, meanSq - mean * mean);
+  const cv = Math.sqrt(variance) / mean;
+  return Math.min(1, cv / INCONSISTENCY_CV_NORMALIZER);
+}
+
 function scoreItem(
   stat: UserPracticeStat,
   baselineBurst: number,
@@ -239,12 +261,16 @@ function scoreItem(
     baselineBurst > 0 && averageBurst !== undefined
       ? Math.max(0, (baselineBurst - averageBurst) / baselineBurst)
       : 0;
+  const inconsistency = inconsistencyScore(stat);
   const confidence = Math.min(1, attempts / CONFIDENCE_RAMP_ATTEMPTS);
   const recency = recencyMultiplier(stat.peakMissRateAt, now);
   const evidence = evidenceMultiplier(attempts);
   const affinity = charAffinity(stat.key, charWeights);
   const baseScore =
-    confidence * (missRate * 0.7 + slowScore * 0.3) * recency * evidence;
+    confidence *
+    (missRate * 0.6 + slowScore * 0.25 + inconsistency * 0.15) *
+    recency *
+    evidence;
   const score = baseScore + CHAR_AFFINITY_WEIGHT * affinity;
 
   return {
@@ -274,6 +300,7 @@ type DecayedStat = UserPracticeStat & {
   attempts: number;
   misses: number;
   burstSum: number;
+  burstSqSum: number;
   burstCount: number;
 };
 
@@ -283,6 +310,7 @@ function decayAll(stats: UserPracticeStat[], now: number): DecayedStat[] {
     attempts: decayValue(stat.attempts, stat.decayedAt, now),
     misses: decayValue(stat.misses, stat.decayedAt, now),
     burstSum: decayValue(stat.burstSum, stat.decayedAt, now),
+    burstSqSum: decayValue(stat.burstSqSum ?? 0, stat.decayedAt, now),
     burstCount: decayValue(stat.burstCount, stat.decayedAt, now),
   }));
 }

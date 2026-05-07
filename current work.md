@@ -18,6 +18,7 @@ Stats UI improvements (highest-leverage gaps from assessment):
 
 ## Done
 
+- Burst variance: `PracticeStatEntry.burstSqSum` (optional) tracks sum of squared bursts. Frontend collector accumulates per-occurrence; backend persists with same decay (decay-stable since both numerator and denominator scale together). New `inconsistencyScore = min(1, cv/0.5)` (coefficient of variation, gated at 4+ burst observations) becomes a third base-score term: `0.6·missRate + 0.25·slowScore + 0.15·inconsistency`. A perfectly-typed but swingy word now enters the pool; a steady one doesn't.
 - Evidence amplification: high-attempt items now amplify their score up to 2× via `evidenceMultiplier = min(2, 1 + 0.5·log10(attempts/8))`. An item at 30% miss across 80 attempts ranks 1.5× higher than the same rate at 8 attempts — sample-size certainty is finally a signal.
 - Retention interleaving: backend exposes `retentionWords`/`retentionBiwords` (graduated set, scored by peakMissRate); frontend allocates ~10% of practice slots to retention with `allocateSlots` (collapses to 0 when no graduated items exist, falls back to all-retention when no struggle items exist). Retention testing without re-creating struggle.
 - Recency boost in scoring: items whose `peakMissRateAt` is recent get up to a 50% multiplier on the (miss + slow) base score, fading linearly to baseline over 30 days. Freshly identified weaknesses get more iterations than long-settled ones.

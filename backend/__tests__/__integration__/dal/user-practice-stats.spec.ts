@@ -200,6 +200,46 @@ describe("UserPracticeStatsDal", () => {
     expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
   });
 
+  it("scores high-variance items higher than consistent ones", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            // bursts [20, 80, 20, 80, 50] — same mean as steady, big variance
+            key: "swingy",
+            attempts: 5,
+            misses: 0,
+            burstSum: 250,
+            burstSqSum: 16100,
+            burstCount: 5,
+          },
+          {
+            // bursts [50, 50, 50, 50, 50] — zero variance
+            key: "steady",
+            attempts: 5,
+            misses: 0,
+            burstSum: 250,
+            burstSqSum: 12500,
+            burstCount: 5,
+          },
+        ],
+        biwords: [],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const swingy = focus.words.find((w) => w.key === "swingy");
+    const steady = focus.words.find((w) => w.key === "steady");
+    expect(swingy).toBeDefined();
+    expect(swingy!.score).toBeGreaterThan(0);
+    // steady item with zero variance and zero misses scores nothing
+    expect(steady).toBeUndefined();
+  });
+
   it("amplifies score for items with more accumulated evidence", async () => {
     // both items at 30% miss rate, but one has 80 attempts and one has 8
     await PracticeStatsDal.updateStats(
