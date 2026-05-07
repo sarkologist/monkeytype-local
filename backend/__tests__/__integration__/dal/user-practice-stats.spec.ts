@@ -130,4 +130,42 @@ describe("UserPracticeStatsDal", () => {
     expect(focus.words[0]?.score).toBeGreaterThan(0);
     expect(focus.biwords).toHaveLength(0);
   });
+
+  it("surfaces graduated items after peak struggle resolves", async () => {
+    // peak: 8 attempts, 4 misses → 50% miss rate; sets peakMissRate
+    await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);
+
+    // many clean attempts later — current miss rate drops below threshold
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "about",
+            attempts: 200,
+            misses: 0,
+            burstSum: 40000,
+            burstCount: 200,
+          },
+        ],
+        biwords: [],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const grad = focus.graduated.find((g) => g.key === "about");
+    expect(grad).toBeDefined();
+    expect(grad?.peakMissRate).toBeGreaterThanOrEqual(0.1);
+    expect(grad?.missRate).toBeLessThan(0.05);
+  });
+
+  it("does not graduate items still struggling", async () => {
+    await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
+  });
 });

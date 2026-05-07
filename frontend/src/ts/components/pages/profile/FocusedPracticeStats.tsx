@@ -122,6 +122,27 @@ export function FocusedPracticeStats(): JSXElement {
                 </Show>
               </div>
             </Show>
+            <Show when={d().graduated.length > 0}>
+              <div class="flex flex-col gap-2">
+                <div class="text-sm text-sub">graduated</div>
+                <div class="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-6 gap-y-1 text-sm">
+                  <div class="text-xs text-sub">word</div>
+                  <div class="text-xs text-sub">type</div>
+                  <div class="text-xs text-sub">peak miss rate</div>
+                  <div class="text-xs text-sub">now</div>
+                  <For each={d().graduated}>
+                    {(item) => (
+                      <>
+                        <div class="font-mono">{item.key}</div>
+                        <div class="text-sub">{item.type}</div>
+                        <div class="text-sub">{`${(item.peakMissRate * 100).toFixed(1)}%`}</div>
+                        <div>{`${(item.missRate * 100).toFixed(1)}%`}</div>
+                      </>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
           </Show>
         </div>
       )}

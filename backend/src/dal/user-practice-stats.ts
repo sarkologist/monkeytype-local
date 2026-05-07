@@ -17,6 +17,8 @@ export type UserPracticeStat = {
   burstCount: number;
   lastSeen: number;
   decayedAt: number;
+  peakMissRate?: number;
+  peakMissRateAt?: number;
 };
 
 export type FocusItem = {
@@ -26,6 +28,15 @@ export type FocusItem = {
   misses: number;
   averageBurst?: number;
   score: number;
+};
+
+export type GraduatedItem = {
+  key: string;
+  type: PracticeStatType;
+  attempts: number;
+  missRate: number;
+  peakMissRate: number;
+  peakMissRateAt: number;
 };
 
 const HALF_LIFE_DAYS = 30;
@@ -47,6 +58,8 @@ function clampWeight(weight: number | undefined): number {
   return Math.max(0, Math.min(1, weight ?? 1));
 }
 
+const PEAK_MIN_ATTEMPTS = 5;
+
 async function updateEntry(
   uid: string,
   language: Language,
@@ -65,28 +78,47 @@ async function updateEntry(
   };
 
   if (existing === null) {
+    const attempts = roundStat(weighted.attempts);
+    const misses = roundStat(weighted.misses);
+    const missRate = attempts > 0 ? misses / attempts : 0;
+    const peak =
+      attempts >= PEAK_MIN_ATTEMPTS
+        ? { peakMissRate: roundStat(missRate), peakMissRateAt: now }
+        : {};
     await getCollection().insertOne({
       _id: new ObjectId(),
       ...filter,
-      attempts: roundStat(weighted.attempts),
-      misses: roundStat(weighted.misses),
+      attempts,
+      misses,
       burstSum: roundStat(weighted.burstSum),
       burstCount: roundStat(weighted.burstCount),
       lastSeen: now,
       decayedAt: now,
+      ...peak,
     });
     return;
   }
 
+  const newAttempts = roundStat(
+    decayValue(existing.attempts, existing.decayedAt, now) + weighted.attempts,
+  );
+  const newMisses = roundStat(
+    decayValue(existing.misses, existing.decayedAt, now) + weighted.misses,
+  );
+  const newMissRate = newAttempts > 0 ? newMisses / newAttempts : 0;
+  const peakUpdate: Partial<UserPracticeStat> = {};
+  if (
+    newAttempts >= PEAK_MIN_ATTEMPTS &&
+    (existing.peakMissRate === undefined || newMissRate > existing.peakMissRate)
+  ) {
+    peakUpdate.peakMissRate = roundStat(newMissRate);
+    peakUpdate.peakMissRateAt = now;
+  }
+
   await getCollection().updateOne(filter, {
     $set: {
-      attempts: roundStat(
-        decayValue(existing.attempts, existing.decayedAt, now) +
-          weighted.attempts,
-      ),
-      misses: roundStat(
-        decayValue(existing.misses, existing.decayedAt, now) + weighted.misses,
-      ),
+      attempts: newAttempts,
+      misses: newMisses,
       burstSum: roundStat(
         decayValue(existing.burstSum, existing.decayedAt, now) +
           weighted.burstSum,
@@ -97,6 +129,7 @@ async function updateEntry(
       ),
       lastSeen: now,
       decayedAt: now,
+      ...peakUpdate,
     },
   });
 }
@@ -159,6 +192,10 @@ type PracticeStatsSummary = {
   averageBurst: number;
 };
 
+const GRADUATED_PEAK_THRESHOLD = 0.1;
+const GRADUATED_CURRENT_THRESHOLD = 0.05;
+const GRADUATED_MIN_ATTEMPTS = 5;
+
 export async function getFocusItems(
   uid: string,
   language: Language,
@@ -167,6 +204,7 @@ export async function getFocusItems(
   summary: PracticeStatsSummary;
   words: FocusItem[];
   biwords: FocusItem[];
+  graduated: GraduatedItem[];
 }> {
   const stats = await getCollection().find({ uid, language }).toArray();
   const decayed = stats.map((stat) => ({
@@ -204,9 +242,34 @@ export async function getFocusItems(
     .filter((stat) => stat.score > 0)
     .sort((a, b) => b.score - a.score);
 
+  const graduated: GraduatedItem[] = decayed
+    .filter((stat) => {
+      if (
+        stat.peakMissRate === undefined ||
+        stat.peakMissRateAt === undefined
+      ) {
+        return false;
+      }
+      if (stat.attempts < GRADUATED_MIN_ATTEMPTS) return false;
+      if (stat.peakMissRate < GRADUATED_PEAK_THRESHOLD) return false;
+      const currentMissRate =
+        stat.attempts > 0 ? stat.misses / stat.attempts : 0;
+      return currentMissRate < GRADUATED_CURRENT_THRESHOLD;
+    })
+    .map((stat) => ({
+      key: stat.key,
+      type: stat.type,
+      attempts: roundStat(stat.attempts),
+      missRate: roundStat(stat.attempts > 0 ? stat.misses / stat.attempts : 0),
+      peakMissRate: stat.peakMissRate as number,
+      peakMissRateAt: stat.peakMissRateAt as number,
+    }))
+    .sort((a, b) => b.peakMissRate - a.peakMissRate);
+
   return {
     summary,
     words: scored.filter((stat) => stat.type === "word"),
     biwords: scored.filter((stat) => stat.type === "biword"),
+    graduated,
   };
 }

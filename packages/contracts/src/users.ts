@@ -48,6 +48,16 @@ const FocusItemSchema = z.object({
 });
 export type FocusItem = z.infer<typeof FocusItemSchema>;
 
+const GraduatedItemSchema = z.object({
+  key: z.string(),
+  type: z.enum(["word", "biword"]),
+  attempts: z.number().nonnegative(),
+  missRate: z.number().nonnegative(),
+  peakMissRate: z.number().nonnegative(),
+  peakMissRateAt: z.number().nonnegative(),
+});
+export type GraduatedItem = z.infer<typeof GraduatedItemSchema>;
+
 export const GetPracticeStatsQuerySchema = z.object({
   language: LanguageSchema,
 });
@@ -67,6 +77,7 @@ export const GetPracticeStatsResponseSchema = responseWithData(
     summary: PracticeStatsSummarySchema,
     words: z.array(FocusItemSchema),
     biwords: z.array(FocusItemSchema),
+    graduated: z.array(GraduatedItemSchema),
   }),
 );
 export type GetPracticeStatsResponse = z.infer<
