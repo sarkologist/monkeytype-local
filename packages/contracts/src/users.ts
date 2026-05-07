@@ -84,6 +84,8 @@ export const GetPracticeStatsResponseSchema = responseWithData(
     summary: PracticeStatsSummarySchema,
     words: z.array(FocusItemSchema),
     biwords: z.array(FocusItemSchema),
+    retentionWords: z.array(FocusItemSchema),
+    retentionBiwords: z.array(FocusItemSchema),
     graduated: z.array(GraduatedItemSchema),
     topSubstitutions: z.array(TopSubstitutionSchema),
   }),

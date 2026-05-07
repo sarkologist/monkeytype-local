@@ -16,6 +16,23 @@ import { zipfyRandomArrayIndex } from "../utils/misc";
 
 let focusedPracticeActive = false;
 
+const RETENTION_RATIO = 0.1;
+
+function allocateSlots(
+  struggleCount: number,
+  retentionCount: number,
+  totalSlots: number,
+): { struggle: number; retention: number } {
+  if (totalSlots === 0) return { struggle: 0, retention: 0 };
+  if (struggleCount === 0 && retentionCount === 0) {
+    return { struggle: 0, retention: 0 };
+  }
+  if (struggleCount === 0) return { struggle: 0, retention: totalSlots };
+  if (retentionCount === 0) return { struggle: totalSlots, retention: 0 };
+  const retention = Math.max(1, Math.round(totalSlots * RETENTION_RATIO));
+  return { struggle: totalSlots - retention, retention };
+}
+
 function sampleWeighted(items: FocusItem[], count: number): string[] {
   if (items.length === 0 || count === 0) return [];
   const weights = items.map((item) => Math.max(item.score, 1e-6));
@@ -50,7 +67,8 @@ export async function init(): Promise<boolean> {
     return false;
   }
 
-  const { words, biwords } = response.body.data;
+  const { words, biwords, retentionWords, retentionBiwords } =
+    response.body.data;
 
   const targetLength = Config.focusedPracticeWordCount;
   const practiceCount = Math.round(
@@ -66,8 +84,25 @@ export async function init(): Promise<boolean> {
     );
   }
 
-  const sampledWords = sampleWeighted(words, wordSlots);
-  const sampledBiwords = sampleWeighted(biwords, biwordSlots);
+  const wordAlloc = allocateSlots(
+    words.length,
+    retentionWords.length,
+    wordSlots,
+  );
+  const biwordAlloc = allocateSlots(
+    biwords.length,
+    retentionBiwords.length,
+    biwordSlots,
+  );
+
+  const sampledWords = [
+    ...sampleWeighted(words, wordAlloc.struggle),
+    ...sampleWeighted(retentionWords, wordAlloc.retention),
+  ];
+  const sampledBiwords = [
+    ...sampleWeighted(biwords, biwordAlloc.struggle),
+    ...sampleWeighted(retentionBiwords, biwordAlloc.retention),
+  ];
   fillerCount +=
     wordSlots - sampledWords.length + (biwordSlots - sampledBiwords.length);
 

@@ -166,6 +166,33 @@ describe("UserPracticeStatsDal", () => {
     expect(grad?.missRate).toBeLessThan(0.05);
   });
 
+  it("returns graduated items in retention pool with score = peakMissRate", async () => {
+    await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "about",
+            attempts: 200,
+            misses: 0,
+            burstSum: 40000,
+            burstCount: 200,
+          },
+        ],
+        biwords: [],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const retention = focus.retentionWords.find((w) => w.key === "about");
+    expect(retention).toBeDefined();
+    expect(retention?.score).toBeGreaterThanOrEqual(0.1);
+  });
+
   it("does not graduate items still struggling", async () => {
     await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);
 

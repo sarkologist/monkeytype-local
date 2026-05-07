@@ -315,6 +315,16 @@ export async function computeSummary(
   return summarizeDecayed(decayAll(stats, now)).summary;
 }
 
+function isGraduated(stat: DecayedStat): boolean {
+  if (stat.peakMissRate === undefined || stat.peakMissRateAt === undefined) {
+    return false;
+  }
+  if (stat.attempts < GRADUATED_MIN_ATTEMPTS) return false;
+  if (stat.peakMissRate < GRADUATED_PEAK_THRESHOLD) return false;
+  const currentMissRate = stat.attempts > 0 ? stat.misses / stat.attempts : 0;
+  return currentMissRate < GRADUATED_CURRENT_THRESHOLD;
+}
+
 export async function getFocusItems(
   uid: string,
   language: Language,
@@ -323,6 +333,8 @@ export async function getFocusItems(
   summary: PracticeStatsSummary;
   words: FocusItem[];
   biwords: FocusItem[];
+  retentionWords: FocusItem[];
+  retentionBiwords: FocusItem[];
   graduated: GraduatedItem[];
   topSubstitutions: CharSubstitutionsDAL.TopSubstitution[];
 }> {
@@ -337,20 +349,23 @@ export async function getFocusItems(
     .filter((stat) => stat.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  const graduated: GraduatedItem[] = decayed
-    .filter((stat) => {
-      if (
-        stat.peakMissRate === undefined ||
-        stat.peakMissRateAt === undefined
-      ) {
-        return false;
-      }
-      if (stat.attempts < GRADUATED_MIN_ATTEMPTS) return false;
-      if (stat.peakMissRate < GRADUATED_PEAK_THRESHOLD) return false;
-      const currentMissRate =
-        stat.attempts > 0 ? stat.misses / stat.attempts : 0;
-      return currentMissRate < GRADUATED_CURRENT_THRESHOLD;
-    })
+  const graduatedDecayed = decayed.filter(isGraduated);
+
+  const retentionItems: FocusItem[] = graduatedDecayed
+    .map((stat) => ({
+      key: stat.key,
+      type: stat.type,
+      attempts: roundStat(stat.attempts),
+      misses: roundStat(stat.misses),
+      averageBurst:
+        stat.burstCount > 0
+          ? roundStat(stat.burstSum / stat.burstCount)
+          : undefined,
+      score: roundStat(stat.peakMissRate ?? 0),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const graduated: GraduatedItem[] = graduatedDecayed
     .map((stat) => ({
       key: stat.key,
       type: stat.type,
@@ -365,6 +380,8 @@ export async function getFocusItems(
     summary,
     words: scored.filter((stat) => stat.type === "word"),
     biwords: scored.filter((stat) => stat.type === "biword"),
+    retentionWords: retentionItems.filter((stat) => stat.type === "word"),
+    retentionBiwords: retentionItems.filter((stat) => stat.type === "biword"),
     graduated,
     topSubstitutions,
   };
