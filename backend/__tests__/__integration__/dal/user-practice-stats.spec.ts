@@ -173,6 +173,46 @@ describe("UserPracticeStatsDal", () => {
     expect(focus.graduated.find((g) => g.key === "about")).toBeUndefined();
   });
 
+  it("boosts items composed of high-substitution chars", async () => {
+    // user types "hello" 8 times perfectly — would score 0 normally
+    // but mistypes 'e' frequently, so "hello" should still enter the pool
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "hello",
+            attempts: 8,
+            misses: 0,
+            burstSum: 1600,
+            burstCount: 8,
+          },
+          {
+            key: "lull",
+            attempts: 8,
+            misses: 0,
+            burstSum: 1600,
+            burstCount: 8,
+          },
+        ],
+        biwords: [],
+        chars: [{ target: "e", typed: "r", count: 30 }],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const hello = focus.words.find((w) => w.key === "hello");
+    const lull = focus.words.find((w) => w.key === "lull");
+    // hello contains 'e' (top substitution target) → score > 0
+    expect(hello).toBeDefined();
+    expect(hello?.score).toBeGreaterThan(0);
+    // lull has no e/affinity → no miss/slow signal → still excluded
+    expect(lull).toBeUndefined();
+  });
+
   it("aggregates and surfaces top character substitutions", async () => {
     await PracticeStatsDal.updateStats(
       uid,

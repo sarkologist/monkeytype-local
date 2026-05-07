@@ -188,7 +188,27 @@ export async function updateStats(
   }
 }
 
-function scoreItem(stat: UserPracticeStat, baselineBurst: number): FocusItem {
+const CHAR_AFFINITY_WEIGHT = 0.15;
+
+function charAffinity(
+  key: string,
+  charWeights: Record<string, number>,
+): number {
+  let sum = 0;
+  let n = 0;
+  for (const c of key) {
+    if (!/^[a-zÀ-ɏ]$/i.test(c)) continue;
+    sum += charWeights[c] ?? 0;
+    n++;
+  }
+  return n > 0 ? sum / n : 0;
+}
+
+function scoreItem(
+  stat: UserPracticeStat,
+  baselineBurst: number,
+  charWeights: Record<string, number>,
+): FocusItem {
   const attempts = Math.max(0, stat.attempts);
   const misses = Math.max(0, stat.misses);
   const missRate = attempts > 0 ? misses / attempts : 0;
@@ -199,7 +219,10 @@ function scoreItem(stat: UserPracticeStat, baselineBurst: number): FocusItem {
       ? Math.max(0, (baselineBurst - averageBurst) / baselineBurst)
       : 0;
   const confidence = Math.min(1, attempts / 8);
-  const score = confidence * (missRate * 0.7 + slowScore * 0.3);
+  const affinity = charAffinity(stat.key, charWeights);
+  const score =
+    confidence * (missRate * 0.7 + slowScore * 0.3) +
+    CHAR_AFFINITY_WEIGHT * affinity;
 
   return {
     key: stat.key,
@@ -293,14 +316,11 @@ export async function getFocusItems(
   const stats = await getCollection().find({ uid, language }).toArray();
   const decayed = decayAll(stats, now);
   const { summary, baselineBurst, qualifyingItems } = summarizeDecayed(decayed);
-  const topSubstitutions = await CharSubstitutionsDAL.getTopSubstitutions(
-    uid,
-    language,
-    now,
-  );
+  const { topSubstitutions, charWeights } =
+    await CharSubstitutionsDAL.getCharStats(uid, language, now);
 
   const scored = qualifyingItems
-    .map((stat) => scoreItem(stat, baselineBurst))
+    .map((stat) => scoreItem(stat, baselineBurst, charWeights))
     .filter((stat) => stat.score > 0)
     .sort((a, b) => b.score - a.score);
 

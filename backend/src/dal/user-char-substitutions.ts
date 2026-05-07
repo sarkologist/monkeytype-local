@@ -89,19 +89,47 @@ export async function updateStats(
   }
 }
 
+export type CharStats = {
+  topSubstitutions: TopSubstitution[];
+  charWeights: Record<string, number>;
+};
+
+export async function getCharStats(
+  uid: string,
+  language: Language,
+  now = Date.now(),
+): Promise<CharStats> {
+  const docs = await getCollection().find({ uid, language }).toArray();
+  const decayed = docs.map((d) => ({
+    target: d.target,
+    typed: d.typed,
+    count: roundStat(decayValue(d.count, d.decayedAt, now)),
+  }));
+
+  const topSubstitutions = decayed
+    .filter((d) => d.count >= 1)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, TOP_LIMIT);
+
+  const targetCounts: Record<string, number> = {};
+  for (const d of decayed) {
+    targetCounts[d.target] = (targetCounts[d.target] ?? 0) + d.count;
+  }
+  const max = Math.max(0, ...Object.values(targetCounts));
+  const charWeights: Record<string, number> = {};
+  if (max > 0) {
+    for (const [c, count] of Object.entries(targetCounts)) {
+      charWeights[c] = roundStat(count / max);
+    }
+  }
+
+  return { topSubstitutions, charWeights };
+}
+
 export async function getTopSubstitutions(
   uid: string,
   language: Language,
   now = Date.now(),
 ): Promise<TopSubstitution[]> {
-  const docs = await getCollection().find({ uid, language }).toArray();
-  return docs
-    .map((d) => ({
-      target: d.target,
-      typed: d.typed,
-      count: roundStat(decayValue(d.count, d.decayedAt, now)),
-    }))
-    .filter((d) => d.count >= 1)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, TOP_LIMIT);
+  return (await getCharStats(uid, language, now)).topSubstitutions;
 }
