@@ -17,6 +17,7 @@ import * as BlocklistDal from "../../../src/dal/blocklist";
 import * as PresetDal from "../../../src/dal/preset";
 import * as ConfigDal from "../../../src/dal/config";
 import * as ResultDal from "../../../src/dal/result";
+import * as UserPracticeStatsDal from "../../../src/dal/user-practice-stats";
 import * as ReportDal from "../../../src/dal/report";
 import * as DailyLeaderboards from "../../../src/utils/daily-leaderboards";
 import * as LeaderboardDal from "../../../src/dal/leaderboards";
@@ -2723,6 +2724,90 @@ describe("user controller test", () => {
         .get("/users/stats")
         .set("authorization", `ApeKey ${apeKey}`)
         .expect(200);
+    });
+  });
+  describe("practice stats", () => {
+    const getFocusItemsMock = vi.spyOn(UserPracticeStatsDal, "getFocusItems");
+    const updatePracticeStatsMock = vi.spyOn(
+      UserPracticeStatsDal,
+      "updateStats",
+    );
+    const resultAddMock = vi.spyOn(ResultDal, "addResult");
+
+    beforeEach(() => {
+      [getFocusItemsMock, updatePracticeStatsMock, resultAddMock].forEach(
+        (it) => it.mockClear(),
+      );
+      getFocusItemsMock.mockResolvedValue({
+        summary: {
+          totalWords: 0,
+          totalBiwords: 0,
+          totalAttempts: 0,
+          missRate: 0,
+          averageBurst: 0,
+        },
+        words: [],
+        biwords: [],
+        retentionWords: [],
+        retentionBiwords: [],
+        graduated: [],
+        topSubstitutions: [],
+      });
+      updatePracticeStatsMock.mockResolvedValue();
+    });
+
+    it("should get focused practice stats", async () => {
+      //WHEN
+      const { body } = await mockApp
+        .get("/users/practiceStats")
+        .set("Authorization", `Bearer ${uid}`)
+        .query({ language: "english" })
+        .expect(200);
+
+      //THEN
+      expect(body.message).toEqual("Practice stats retrieved");
+      expect(getFocusItemsMock).toHaveBeenCalledWith(uid, "english");
+    });
+
+    it("should update practice stats without inserting a result", async () => {
+      //GIVEN
+      const practiceStats = {
+        source: "generated",
+        language: "english",
+        weight: 0.25,
+        words: [
+          {
+            key: "about",
+            attempts: 2,
+            misses: 1,
+            burstSum: 180,
+            burstSqSum: 16400,
+            burstCount: 2,
+          },
+        ],
+        biwords: [
+          {
+            key: "think about",
+            attempts: 1,
+            misses: 1,
+            burstSum: 80,
+            burstSqSum: 6400,
+            burstCount: 1,
+          },
+        ],
+      };
+
+      //WHEN
+      const { body } = await mockApp
+        .post("/users/practiceStats")
+        .set("Authorization", `Bearer ${uid}`)
+        .send(practiceStats)
+        .expect(200);
+
+      //THEN
+      expect(body.message).toEqual("Practice stats updated");
+      expect(updatePracticeStatsMock).toHaveBeenCalledWith(uid, practiceStats);
+      expect(resultAddMock).not.toHaveBeenCalled();
     });
   });
   describe("get favorite quotes", () => {

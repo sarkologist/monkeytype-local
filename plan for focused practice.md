@@ -25,6 +25,9 @@ Core feature shipped. See code for design details; this doc tracks what's pendin
 - Configurable word count + filler probability — `focusedPracticeWordCount` (10–100, default 50) sets session length directly; `focusedPracticeFillerProbability` (0–1, default 0.3) is the per-word probability of filler. Pool built by score-weighted sampling with replacement; session limit = word count exactly. Replaces rank-based `weightedItems` and the old item-count formula.
 - Remove top-N cutoff — dropped `.slice(0, 30)` from `getFocusItems`; full qualifying pool now returned, long tail naturally low-probability via score-weighted sampling.
 - Bootstrap from filler — removed dead-end; backfill shortfall into filler so session length always equals `focusedPracticeWordCount`; one-line notice when zero qualifying items; filler uses Zipf over full list when language is `orderedByFrequency`, falls back to uniform top-100 otherwise.
+- Focused-practice generator coverage — API error path, filler bootstrap, and retention/struggle slot allocation covered in `focused-practice.spec.ts`.
+- Focused-practice validation — selector extracted to pure helper with injected RNG/filler; tests validate score-weighted exposure, retention/filler invariants, synthetic outcome lift vs random filler, and backend mixed-signal ranking.
+- Focused-practice missing coverage — collector extracted to an injectable helper and pending frontend/backend/contract/schema tests added.
 
 ## Pending
 
@@ -32,26 +35,26 @@ Core feature shipped. See code for design details; this doc tracks what's pendin
 
 Frontend:
 
-- [ ] collector includes only generated wordlist tests
-- [ ] repeated generated tests emit weighted practiceStats when setting > 0
-- [ ] repeated generated tests emit no practiceStats when setting is 0
-- [ ] custom/focused practice does not emit practiceStats (non-focused custom)
-- [ ] focused-practice run emits `practiceStats` with `weight === Config.focusedPracticeWeight`
-- [ ] focused-practice run with `focusedPracticeWeight === 0` emits no `practiceStats`
-- [ ] focused-practice run still respects punctuation/numbers/funbox guards
-- [ ] missed and slow words aggregate correctly
-- [ ] biwords use previous + current target words
+- [x] collector includes only generated wordlist tests
+- [x] repeated generated tests emit weighted practiceStats when setting > 0
+- [x] repeated generated tests emit no practiceStats when setting is 0
+- [x] custom/focused practice does not emit practiceStats (non-focused custom)
+- [x] focused-practice run emits `practiceStats` with `weight === Config.focusedPracticeWeight`
+- [x] focused-practice run with `focusedPracticeWeight === 0` emits no `practiceStats`
+- [x] focused-practice run still respects punctuation/numbers/funbox guards
+- [x] missed and slow words aggregate correctly
+- [x] biwords use previous + current target words
 
 Backend:
 
-- [ ] result save updates aggregate docs
-- [ ] repeated stats-only update updates aggregate docs but inserts no result
-- [ ] practiceStats is not persisted on result documents
+- [x] result save updates aggregate docs
+- [x] repeated stats-only update updates aggregate docs but inserts no result
+- [x] practiceStats is not persisted on result documents
 
 Contract/schema:
 
-- [ ] completed event accepts bounded optional practiceStats
-- [ ] focus endpoint validates response
+- [x] completed event accepts bounded optional practiceStats
+- [x] focus endpoint validates response
 
 ### Other
 

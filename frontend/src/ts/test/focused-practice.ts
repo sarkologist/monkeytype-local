@@ -8,7 +8,7 @@ import {
   showNoticeNotification,
 } from "../states/notifications";
 import { setCustomTextName } from "../legacy-states/custom-text-name";
-import { FocusItem } from "@monkeytype/contracts/users";
+import type { FocusItem } from "@monkeytype/contracts/users";
 import { before } from "./practise-words";
 import { configEvent } from "../events/config";
 import { restartTestEvent } from "../events/test";
@@ -17,6 +17,20 @@ import { zipfyRandomArrayIndex } from "../utils/misc";
 let focusedPracticeActive = false;
 
 const RETENTION_RATIO = 0.1;
+
+type FocusedPracticeItems = {
+  words: FocusItem[];
+  biwords: FocusItem[];
+  retentionWords: FocusItem[];
+  retentionBiwords: FocusItem[];
+};
+
+type BuildFocusedPracticeTextOptions = FocusedPracticeItems & {
+  targetLength: number;
+  fillerProbability: number;
+  rng?: () => number;
+  pickFiller: () => string;
+};
 
 function allocateSlots(
   struggleCount: number,
@@ -33,13 +47,17 @@ function allocateSlots(
   return { struggle: totalSlots - retention, retention };
 }
 
-function sampleWeighted(items: FocusItem[], count: number): string[] {
+function sampleWeighted(
+  items: FocusItem[],
+  count: number,
+  rng: () => number,
+): string[] {
   if (items.length === 0 || count === 0) return [];
   const weights = items.map((item) => Math.max(item.score, 1e-6));
   const total = weights.reduce((s, w) => s + w, 0);
   const result: string[] = [];
   for (let i = 0; i < count; i++) {
-    let r = Math.random() * total;
+    let r = rng() * total;
     let picked = items[items.length - 1] ?? items[0];
     for (let j = 0; j < weights.length; j++) {
       r -= weights[j] ?? 0;
@@ -51,6 +69,58 @@ function sampleWeighted(items: FocusItem[], count: number): string[] {
     if (picked !== undefined) result.push(picked.key);
   }
   return result;
+}
+
+export function buildFocusedPracticeText({
+  words,
+  biwords,
+  retentionWords,
+  retentionBiwords,
+  targetLength,
+  fillerProbability,
+  rng = Math.random,
+  pickFiller,
+}: BuildFocusedPracticeTextOptions): string[] {
+  const practiceCount = Math.round(targetLength * (1 - fillerProbability));
+  let fillerCount = targetLength - practiceCount;
+  const wordSlots = Math.ceil(practiceCount / 2);
+  const biwordSlots = practiceCount - wordSlots;
+
+  const wordAlloc = allocateSlots(
+    words.length,
+    retentionWords.length,
+    wordSlots,
+  );
+  const biwordAlloc = allocateSlots(
+    biwords.length,
+    retentionBiwords.length,
+    biwordSlots,
+  );
+
+  const sampledWords = [
+    ...sampleWeighted(words, wordAlloc.struggle, rng),
+    ...sampleWeighted(retentionWords, wordAlloc.retention, rng),
+  ];
+  const sampledBiwords = [
+    ...sampleWeighted(biwords, biwordAlloc.struggle, rng),
+    ...sampleWeighted(retentionBiwords, biwordAlloc.retention, rng),
+  ];
+  fillerCount +=
+    wordSlots - sampledWords.length + (biwordSlots - sampledBiwords.length);
+
+  const pool = [
+    ...sampledWords,
+    ...sampledBiwords,
+    ...Array.from({ length: fillerCount }, pickFiller),
+  ].filter(Boolean);
+
+  for (let i = pool.length; i < targetLength; i++) {
+    const filler = pickFiller();
+    if (filler === "") break;
+    pool.push(filler);
+  }
+
+  return pool.slice(0, targetLength);
 }
 
 export function isFocusedPracticeActive(): boolean {
@@ -71,40 +141,12 @@ export async function init(): Promise<boolean> {
     response.body.data;
 
   const targetLength = Config.focusedPracticeWordCount;
-  const practiceCount = Math.round(
-    targetLength * (1 - Config.focusedPracticeFillerProbability),
-  );
-  let fillerCount = targetLength - practiceCount;
-  const wordSlots = Math.ceil(practiceCount / 2);
-  const biwordSlots = practiceCount - wordSlots;
 
   if (words.length === 0 && biwords.length === 0) {
     showNoticeNotification(
       "Building up your stats — using common words for now.",
     );
   }
-
-  const wordAlloc = allocateSlots(
-    words.length,
-    retentionWords.length,
-    wordSlots,
-  );
-  const biwordAlloc = allocateSlots(
-    biwords.length,
-    retentionBiwords.length,
-    biwordSlots,
-  );
-
-  const sampledWords = [
-    ...sampleWeighted(words, wordAlloc.struggle),
-    ...sampleWeighted(retentionWords, wordAlloc.retention),
-  ];
-  const sampledBiwords = [
-    ...sampleWeighted(biwords, biwordAlloc.struggle),
-    ...sampleWeighted(retentionBiwords, biwordAlloc.retention),
-  ];
-  fillerCount +=
-    wordSlots - sampledWords.length + (biwordSlots - sampledBiwords.length);
 
   const language = await JSONData.getLanguage(Config.language);
   const pickFiller = language.orderedByFrequency
@@ -114,11 +156,15 @@ export async function init(): Promise<boolean> {
         return () => pool[Math.floor(Math.random() * pool.length)] ?? "";
       })();
 
-  const pool = [
-    ...sampledWords,
-    ...sampledBiwords,
-    ...Array.from({ length: fillerCount }, pickFiller),
-  ].filter(Boolean);
+  const pool = buildFocusedPracticeText({
+    words,
+    biwords,
+    retentionWords,
+    retentionBiwords,
+    targetLength,
+    fillerProbability: Config.focusedPracticeFillerProbability,
+    pickFiller,
+  });
 
   before.mode = before.mode ?? Config.mode;
   before.punctuation = before.punctuation ?? Config.punctuation;

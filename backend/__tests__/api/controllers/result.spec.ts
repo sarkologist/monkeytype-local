@@ -4,6 +4,7 @@ import * as Configuration from "../../../src/init/configuration";
 import * as ResultDal from "../../../src/dal/result";
 import * as UserDal from "../../../src/dal/user";
 import * as LogsDal from "../../../src/dal/logs";
+import * as UserPracticeStatsDal from "../../../src/dal/user-practice-stats";
 import { ObjectId } from "mongodb";
 import { mockAuthenticateWithApeKey } from "../../__testData__/auth";
 import { enableRateLimitExpects } from "../../__testData__/rate-limit";
@@ -583,6 +584,10 @@ describe("result controller test", () => {
     const userIncrementXpMock = vi.spyOn(UserDal, "incrementXp");
     const userUpdateTypingStatsMock = vi.spyOn(UserDal, "updateTypingStats");
     const resultAddMock = vi.spyOn(ResultDal, "addResult");
+    const practiceStatsUpdateMock = vi.spyOn(
+      UserPracticeStatsDal,
+      "updateStats",
+    );
 
     beforeEach(async () => {
       await enableResultsSaving(true);
@@ -596,6 +601,7 @@ describe("result controller test", () => {
         userIncrementXpMock,
         userUpdateTypingStatsMock,
         resultAddMock,
+        practiceStatsUpdateMock,
       ].forEach((it) => it.mockClear());
 
       userGetMock.mockResolvedValue({ name: "bob" } as any);
@@ -604,6 +610,7 @@ describe("result controller test", () => {
       userCheckIfPbMock.mockResolvedValue(true);
       resultAddMock.mockResolvedValue({ insertedId });
       userIncrementXpMock.mockResolvedValue();
+      practiceStatsUpdateMock.mockResolvedValue();
     });
 
     it("should add result", async () => {
@@ -677,6 +684,29 @@ describe("result controller test", () => {
         uid,
         4,
         15.1 + 2 - 5, //duration + incompleteTestSeconds-afk
+      );
+    });
+    it("should update practice stats without persisting them on the result", async () => {
+      //GIVEN
+      const practiceStats = buildPracticeStats();
+      const completedEvent = buildCompletedEvent({ practiceStats });
+
+      //WHEN
+      await mockApp
+        .post("/results")
+        .set("Authorization", `Bearer ${uid}`)
+        .send({
+          result: completedEvent,
+        })
+        .expect(200);
+
+      //THEN
+      expect(practiceStatsUpdateMock).toHaveBeenCalledWith(uid, practiceStats);
+      expect(resultAddMock).toHaveBeenCalledWith(
+        uid,
+        expect.not.objectContaining({
+          practiceStats: expect.anything(),
+        }),
       );
     });
     it("should fail if result saving is disabled", async () => {
@@ -811,6 +841,35 @@ function buildCompletedEvent(result?: Partial<CompletedEvent>): CompletedEvent {
     lastKeyToEnd: 9,
     startToFirstKey: 11,
     ...result,
+  };
+}
+
+function buildPracticeStats(): CompletedEvent["practiceStats"] {
+  return {
+    source: "generated",
+    language: "english",
+    weight: 0.5,
+    words: [
+      {
+        key: "about",
+        attempts: 2,
+        misses: 1,
+        burstSum: 180,
+        burstSqSum: 16400,
+        burstCount: 2,
+      },
+    ],
+    biwords: [
+      {
+        key: "think about",
+        attempts: 1,
+        misses: 1,
+        burstSum: 80,
+        burstSqSum: 6400,
+        burstCount: 1,
+      },
+    ],
+    chars: [{ target: "e", typed: "r", count: 1 }],
   };
 }
 

@@ -445,6 +445,80 @@ describe("UserPracticeStatsDal", () => {
     });
   });
 
+  it("ranks mixed-profile items by expected practice lift", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "accuracy",
+            attempts: 80,
+            misses: 40,
+            burstSum: 16000,
+            burstCount: 80,
+          },
+          {
+            key: "hesitate",
+            attempts: 80,
+            misses: 0,
+            burstSum: 8000,
+            burstCount: 80,
+          },
+          {
+            key: "erratic",
+            attempts: 8,
+            misses: 0,
+            burstSum: 400,
+            burstSqSum: 25800,
+            burstCount: 8,
+          },
+          {
+            key: "stable",
+            attempts: 80,
+            misses: 0,
+            burstSum: 16000,
+            burstSqSum: 3200000,
+            burstCount: 80,
+          },
+        ],
+        biwords: [],
+        chars: [{ target: "z", typed: "x", count: 20 }],
+      },
+      1000,
+    );
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: [
+          {
+            key: "zest",
+            attempts: 8,
+            misses: 0,
+            burstSum: 1600,
+            burstCount: 8,
+          },
+        ],
+        biwords: [],
+      },
+      1000,
+    );
+
+    const focus = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const keys = focus.words.map((word) => word.key);
+
+    expect(keys.slice(0, 4)).toEqual([
+      "accuracy",
+      "erratic",
+      "hesitate",
+      "zest",
+    ]);
+    expect(keys).not.toContain("stable");
+  });
+
   it("records weekly snapshots", async () => {
     const week = 7 * 24 * 60 * 60 * 1000;
     await PracticeStatsDal.updateStats(uid, stats(8, 4), 1000);

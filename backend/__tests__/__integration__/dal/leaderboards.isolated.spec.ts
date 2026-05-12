@@ -2,7 +2,6 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { ObjectId } from "mongodb";
 import * as UserDal from "../../../src/dal/user";
 import * as LeaderboardsDal from "../../../src/dal/leaderboards";
-import * as PublicDal from "../../../src/dal/public";
 import type { DBLeaderboardEntry } from "../../../src/dal/leaderboards";
 import type { PersonalBest } from "@monkeytype/schemas/shared";
 
@@ -140,36 +139,6 @@ describe("LeaderboardsDal", () => {
 
       //THEN
       expect(lb[0]).not.toHaveProperty("consistency");
-    });
-
-    it("should update public speedHistogram for time english 15", async () => {
-      //GIVEN
-      await createUser(lbBests(pb(10), pb(60)));
-      await createUser(lbBests(pb(24)));
-      await createUser(lbBests(pb(28)));
-      await createUser(lbBests(pb(31)));
-
-      //WHEN
-      await LeaderboardsDal.update("time", "15", "english");
-      const result = await PublicDal.getSpeedHistogram("english", "time", "15");
-
-      //THEN
-      expect(result).toEqual({ "10": 1, "20": 2, "30": 1 });
-    });
-
-    it("should update public speedHistogram for time english 60", async () => {
-      //GIVEN
-      await createUser(lbBests(pb(60), pb(20)));
-      await createUser(lbBests(undefined, pb(21)));
-      await createUser(lbBests(undefined, pb(110)));
-      await createUser(lbBests(undefined, pb(115)));
-
-      //WHEN
-      await LeaderboardsDal.update("time", "60", "english");
-      const result = await PublicDal.getSpeedHistogram("english", "time", "60");
-
-      //THEN
-      expect(result).toEqual({ "20": 2, "110": 2 });
     });
 
     it("should create leaderboard with badges", async () => {

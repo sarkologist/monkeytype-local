@@ -24,6 +24,16 @@ export type UserPracticeStat = {
   peakMissRateAt?: number;
 };
 
+export type ScoreBreakdown = {
+  missRate: number;
+  slowScore: number;
+  inconsistency: number;
+  affinity: number;
+  confidence: number;
+  recency: number;
+  evidence: number;
+};
+
 export type FocusItem = {
   key: string;
   type: PracticeStatType;
@@ -31,6 +41,7 @@ export type FocusItem = {
   misses: number;
   averageBurst?: number;
   score: number;
+  breakdown?: ScoreBreakdown;
 };
 
 export type GraduatedItem = {
@@ -281,6 +292,15 @@ function scoreItem(
     averageBurst:
       averageBurst === undefined ? undefined : roundStat(averageBurst),
     score: roundStat(score),
+    breakdown: {
+      missRate: roundStat(missRate),
+      slowScore: roundStat(slowScore),
+      inconsistency: roundStat(inconsistency),
+      affinity: roundStat(affinity),
+      confidence: roundStat(confidence),
+      recency: roundStat(recency),
+      evidence: roundStat(evidence),
+    },
   };
 }
 
