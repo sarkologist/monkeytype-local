@@ -15,9 +15,11 @@ Stats UI improvements (highest-leverage gaps from assessment):
 - [x] graduated items list
 - [x] weekly summary snapshots + trendline
 - [x] character-level error tracking
+- [x] informative focused-practice charts
 
 ## Done
 
+- Added focused-practice profile charts for weakness mix, attempts vs misses, score distribution, mistake heatmap, graduation progress, and retention queue. Exposed `FocusItem.breakdown` through the users contract so the profile can explain why a weak item was selected.
 - Added AGENTS policy to commit completed work.
 - Added the missing focused-practice test coverage: frontend collector gating/weights/guards/aggregation/biwords, backend result-vs-stats persistence, and contract/schema validation.
 - Added outcome-lift validation for focused practice: pure selector tests cover score-weighted exposure, retention quota, filler backfill, and a deterministic weak-burden simulation; backend mixed-profile test covers miss/slow/inconsistency/char scoring.

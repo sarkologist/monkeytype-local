@@ -38,6 +38,16 @@ import { LanguageSchema } from "@monkeytype/schemas/languages";
 import { CustomThemeColorsSchema } from "@monkeytype/schemas/configs";
 import { CompletedEventPracticeStatsSchema } from "@monkeytype/schemas/results";
 
+const ScoreBreakdownSchema = z.object({
+  missRate: z.number().nonnegative(),
+  slowScore: z.number().nonnegative(),
+  inconsistency: z.number().nonnegative(),
+  affinity: z.number().nonnegative(),
+  confidence: z.number().nonnegative(),
+  recency: z.number().nonnegative(),
+  evidence: z.number().nonnegative(),
+});
+
 const FocusItemSchema = z.object({
   key: z.string(),
   type: z.enum(["word", "biword"]),
@@ -45,6 +55,7 @@ const FocusItemSchema = z.object({
   misses: z.number().nonnegative(),
   averageBurst: z.number().nonnegative().optional(),
   score: z.number().nonnegative(),
+  breakdown: ScoreBreakdownSchema.optional(),
 });
 export type FocusItem = z.infer<typeof FocusItemSchema>;
 

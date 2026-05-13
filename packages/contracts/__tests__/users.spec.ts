@@ -21,6 +21,15 @@ describe("GetPracticeStatsResponseSchema", () => {
             misses: 2,
             averageBurst: 95,
             score: 0.75,
+            breakdown: {
+              missRate: 0.25,
+              slowScore: 0.12,
+              inconsistency: 0.3,
+              affinity: 0.4,
+              confidence: 1,
+              recency: 1.2,
+              evidence: 1,
+            },
           },
         ],
         biwords: [
@@ -56,9 +65,20 @@ describe("GetPracticeStatsResponseSchema", () => {
       },
     };
 
-    expect(GetPracticeStatsResponseSchema.safeParse(response).success).toBe(
-      true,
-    );
+    const parsed = GetPracticeStatsResponseSchema.safeParse(response);
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.data.words[0]?.breakdown).toEqual({
+        missRate: 0.25,
+        slowScore: 0.12,
+        inconsistency: 0.3,
+        affinity: 0.4,
+        confidence: 1,
+        recency: 1.2,
+        evidence: 1,
+      });
+    }
   });
 
   it("rejects malformed focused-practice responses", () => {
