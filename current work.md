@@ -19,6 +19,7 @@ Stats UI improvements (highest-leverage gaps from assessment):
 
 ## Done
 
+- Fixed practice stats result-save 422s from huge `burstSqSum`: frontend collector now ignores non-finite / ≥1000 WPM burst samples for burst aggregates while still counting attempts and misses.
 - Added focused-practice profile charts for weakness mix, attempts vs misses, score distribution, mistake heatmap, graduation progress, and retention queue. Exposed `FocusItem.breakdown` through the users contract so the profile can explain why a weak item was selected.
 - Added AGENTS policy to commit completed work.
 - Added the missing focused-practice test coverage: frontend collector gating/weights/guards/aggregation/biwords, backend result-vs-stats persistence, and contract/schema validation.

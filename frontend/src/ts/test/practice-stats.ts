@@ -25,6 +25,8 @@ type BuildPracticeStatsOptions = {
   burstHistory: readonly (number | undefined)[];
 };
 
+const MAX_PRACTICE_BURST_WPM = 1000;
+
 function normalizePracticeKey(word: string | undefined): string {
   return (word ?? "")
     .toLowerCase()
@@ -53,7 +55,7 @@ function addPracticeEntry(
 
   entry.attempts++;
   if (missed) entry.misses++;
-  if (burst > 0) {
+  if (Number.isFinite(burst) && burst > 0 && burst < MAX_PRACTICE_BURST_WPM) {
     entry.burstSum += burst;
     entry.burstSqSum = (entry.burstSqSum ?? 0) + burst * burst;
     entry.burstCount++;

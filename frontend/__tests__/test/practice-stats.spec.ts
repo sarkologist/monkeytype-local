@@ -135,6 +135,43 @@ describe("practice stats collector", () => {
     ]);
   });
 
+  it("keeps attempts and misses while ignoring huge or infinite burst samples", () => {
+    const stats = build({
+      targetWords: ["alpha", "beta"],
+      typedWords: ["alpha", "wrong"],
+      burstHistory: [12000, Infinity],
+    });
+
+    expect(stats?.words).toEqual([
+      {
+        key: "alpha",
+        attempts: 1,
+        misses: 0,
+        burstSum: 0,
+        burstSqSum: 0,
+        burstCount: 0,
+      },
+      {
+        key: "beta",
+        attempts: 1,
+        misses: 1,
+        burstSum: 0,
+        burstSqSum: 0,
+        burstCount: 0,
+      },
+    ]);
+    expect(stats?.biwords).toEqual([
+      {
+        key: "alpha beta",
+        attempts: 1,
+        misses: 1,
+        burstSum: 0,
+        burstSqSum: 0,
+        burstCount: 0,
+      },
+    ]);
+  });
+
   it("builds biwords from previous and current target words", () => {
     const stats = build({
       targetWords: ["alpha", "beta"],
