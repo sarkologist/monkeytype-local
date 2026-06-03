@@ -97,6 +97,8 @@ export const GetPracticeStatsResponseSchema = responseWithData(
     biwords: z.array(FocusItemSchema),
     retentionWords: z.array(FocusItemSchema),
     retentionBiwords: z.array(FocusItemSchema),
+    holdoutWords: z.array(FocusItemSchema),
+    holdoutBiwords: z.array(FocusItemSchema),
     graduated: z.array(GraduatedItemSchema),
     topSubstitutions: z.array(TopSubstitutionSchema),
   }),
@@ -109,6 +111,38 @@ export const UpdatePracticeStatsRequestSchema =
   CompletedEventPracticeStatsSchema;
 export type UpdatePracticeStatsRequest = z.infer<
   typeof UpdatePracticeStatsRequestSchema
+>;
+
+const PracticeStatsSessionItemSchema = z.object({
+  key: z.string().min(1).max(100),
+  type: z.enum(["word", "biword"]),
+  role: z.enum(["struggle", "retention", "filler", "holdout"]),
+  score: z.number().nonnegative().optional(),
+  attempts: z.number().nonnegative().optional(),
+  misses: z.number().nonnegative().optional(),
+  count: z.number().int().nonnegative().max(1000),
+});
+export type PracticeStatsSessionItem = z.infer<
+  typeof PracticeStatsSessionItemSchema
+>;
+
+export const RecordPracticeStatsSessionRequestSchema = z.object({
+  sessionId: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z0-9_-]+$/),
+  language: LanguageSchema,
+  source: z.literal("focused"),
+  seed: z.number().int().nonnegative(),
+  config: z.object({
+    wordCount: z.number().int().min(10).max(100),
+    fillerProbability: z.number().min(0).max(1),
+  }),
+  items: z.array(PracticeStatsSessionItemSchema).max(500),
+});
+export type RecordPracticeStatsSessionRequest = z.infer<
+  typeof RecordPracticeStatsSessionRequestSchema
 >;
 
 const PracticeStatsSnapshotSchema = z.object({
@@ -815,6 +849,20 @@ export const usersContract = c.router(
       method: "POST",
       path: "/practiceStats",
       body: UpdatePracticeStatsRequestSchema.strict(),
+      responses: {
+        200: MonkeyResponseSchema,
+        ...CommonResponses,
+      },
+      metadata: meta({
+        rateLimit: "resultsAdd",
+      }),
+    },
+    recordPracticeStatsSession: {
+      summary: "record practice stats session",
+      description: "Records a focused practice session plan for measurement",
+      method: "POST",
+      path: "/practiceStats/session",
+      body: RecordPracticeStatsSessionRequestSchema.strict(),
       responses: {
         200: MonkeyResponseSchema,
         ...CommonResponses,

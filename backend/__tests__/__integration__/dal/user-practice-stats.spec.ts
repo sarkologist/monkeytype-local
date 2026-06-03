@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import * as PracticeStatsDal from "../../../src/dal/user-practice-stats";
 import * as PracticeSnapshotsDal from "../../../src/dal/user-practice-snapshots";
 import * as CharSubstitutionsDal from "../../../src/dal/user-char-substitutions";
+import * as PracticeSessionsDal from "../../../src/dal/user-practice-sessions";
 import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
 
 const uid = "practice-test-user";
@@ -37,8 +38,10 @@ function stats(
 describe("UserPracticeStatsDal", () => {
   afterEach(async () => {
     await PracticeStatsDal.getCollection().deleteMany({ uid });
+    await PracticeStatsDal.getSourceCollection().deleteMany({ uid });
     await PracticeSnapshotsDal.getCollection().deleteMany({ uid });
     await CharSubstitutionsDal.getCollection().deleteMany({ uid });
+    await PracticeSessionsDal.getCollection().deleteMany({ uid });
   });
 
   it("increments repeated keys", async () => {
@@ -54,6 +57,33 @@ describe("UserPracticeStatsDal", () => {
 
     expect(doc?.attempts).toBe(5);
     expect(doc?.misses).toBe(3);
+  });
+
+  it("records source-specific stats alongside selection stats", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      { ...stats(2, 1), source: "focused", practiceSessionId: "session-1" },
+      1000,
+    );
+
+    const aggregate = await PracticeStatsDal.getCollection().findOne({
+      uid,
+      language: "english",
+      type: "word",
+      key: "about",
+    });
+    const sourceAggregate =
+      await PracticeStatsDal.getSourceCollection().findOne({
+        uid,
+        language: "english",
+        source: "focused",
+        type: "word",
+        key: "about",
+      });
+
+    expect(aggregate?.attempts).toBe(2);
+    expect(sourceAggregate?.attempts).toBe(2);
+    expect(sourceAggregate?.misses).toBe(1);
   });
 
   it("scales payloads by weight", async () => {
@@ -133,6 +163,85 @@ describe("UserPracticeStatsDal", () => {
     expect(focus.words[0]?.key).toBe("about");
     expect(focus.words[0]?.score).toBeGreaterThan(0);
     expect(focus.biwords).toHaveLength(0);
+  });
+
+  it("returns deterministic holdout and excludes it from focus pools", async () => {
+    await PracticeStatsDal.updateStats(
+      uid,
+      {
+        source: "generated",
+        language: "english",
+        words: Array.from({ length: 40 }, (_, index) => ({
+          key: `weak${index}`,
+          attempts: 8,
+          misses: 4,
+          burstSum: 1600,
+          burstCount: 8,
+        })),
+        biwords: [],
+      },
+      1000,
+    );
+
+    const first = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const second = await PracticeStatsDal.getFocusItems(uid, "english", 1000);
+    const holdoutKeys = new Set(first.holdoutWords.map((w) => w.key));
+
+    expect(first.holdoutWords.length).toBeGreaterThanOrEqual(2);
+    expect(first.holdoutWords.length).toBeLessThanOrEqual(6);
+    expect(second.holdoutWords.map((w) => w.key)).toEqual(
+      first.holdoutWords.map((w) => w.key),
+    );
+    expect(first.words.some((w) => holdoutKeys.has(w.key))).toBe(false);
+  });
+
+  it("idempotently records bounded session plans", async () => {
+    await PracticeSessionsDal.recordSession(
+      uid,
+      {
+        sessionId: "session-1",
+        language: "english",
+        source: "focused",
+        seed: 123,
+        config: { wordCount: 10, fillerProbability: 0.3 },
+        items: [
+          {
+            key: "about",
+            type: "word",
+            role: "struggle",
+            score: 0.5,
+            attempts: 8,
+            misses: 4,
+            count: 2,
+          },
+        ],
+      },
+      1000,
+    );
+    await PracticeSessionsDal.recordSession(
+      uid,
+      {
+        sessionId: "session-1",
+        language: "english",
+        source: "focused",
+        seed: 456,
+        config: { wordCount: 20, fillerProbability: 0.1 },
+        items: [],
+      },
+      2000,
+    );
+
+    const sessions = await PracticeSessionsDal.getCollection()
+      .find({ uid })
+      .toArray();
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]).toMatchObject({
+      uid,
+      sessionId: "session-1",
+      seed: 456,
+      createdAt: 2000,
+      items: [],
+    });
   });
 
   it("surfaces graduated items after peak struggle resolves", async () => {

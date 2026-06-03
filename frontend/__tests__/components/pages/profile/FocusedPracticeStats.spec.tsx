@@ -96,6 +96,8 @@ function practiceStatsResponse(): unknown {
           },
         ],
         retentionBiwords: [],
+        holdoutWords: [],
+        holdoutBiwords: [],
         graduated: [
           {
             key: "better",

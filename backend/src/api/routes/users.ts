@@ -91,6 +91,10 @@ export default s.router(usersContract, {
   updatePracticeStats: {
     handler: async (r) => callController(UserController.updatePracticeStats)(r),
   },
+  recordPracticeStatsSession: {
+    handler: async (r) =>
+      callController(UserController.recordPracticeStatsSession)(r),
+  },
   getPracticeStatsHistory: {
     handler: async (r) =>
       callController(UserController.getPracticeStatsHistory)(r),

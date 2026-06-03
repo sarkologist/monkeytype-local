@@ -761,6 +761,7 @@ function buildPracticeStats(): CompletedEventPracticeStats | undefined {
   return buildPracticeStatsFromState({
     config: Config,
     focusedPracticeActive: FocusedPractice.isFocusedPracticeActive(),
+    focusedPracticeSessionId: FocusedPractice.getActivePracticeSessionId(),
     isRepeated: TestState.isRepeated,
     hasWordMutatingFunbox:
       getActiveFunboxesWithFunction("withWords").length > 0,
@@ -905,6 +906,12 @@ function buildCompletedEvent(
     stopOnLetter: Config.stopOnError === "letter",
     practiceStats: buildPracticeStats(),
   };
+
+  if (completedEvent.practiceStats?.source === "focused") {
+    completedEvent.practiceSource = "focused";
+    completedEvent.practiceSessionId =
+      completedEvent.practiceStats.practiceSessionId;
+  }
 
   if (completedEvent.mode !== "custom") delete completedEvent.customText;
   if (completedEvent.mode !== "quote") delete completedEvent.quoteLength;

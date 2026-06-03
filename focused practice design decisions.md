@@ -3,7 +3,10 @@
 Agent note: after implementing any focused-practice change, update this file and `plan for focused practice.md`.
 
 - Stats live in `userPracticeStats`, not user docs, to keep user reads small.
+- Source-specific stats live in `userPracticeSourceStats` keyed by `{ uid, language, source, type, key }` for measurement only; selection still uses `userPracticeStats`.
+- Focused session plans live in `userPracticeSessions`, upserted by `{ uid, sessionId }`, with selected items, role, count, seed, and config snapshot.
 - `practiceStats` is accepted on `CompletedEvent` but omitted by `buildDbResult`, so normal result docs stay unchanged.
+- Focused result docs persist only `practiceSource: "focused"` and `practiceSessionId` so result trends can be measured without storing the full practice payload.
 - Collection key is `{ uid, language, type, key }`; no buckets for mode, punctuation, numbers, or mode2.
 - Initial collection only runs for generated `time`/`words` tests with punctuation/numbers off and no word-mutating funbox.
 - Words are lowercased, common punctuation stripped, and digit-containing keys skipped.
@@ -14,12 +17,14 @@ Agent note: after implementing any focused-practice change, update this file and
 - Decay is lazy on update/query with 30-day half-life, rounded to 3 decimals.
 - Scoring uses miss rate, slow-burst score, and burst inconsistency, with recency and evidence multipliers on the base: `score = confidence × (0.6·missRate + 0.25·slowScore + 0.15·inconsistency) × recency × evidence + 0.15·charAffinity`. Confidence ramps `min(1, attempts/8)`; recency = `1 + 0.5 × max(0, 1 - daysSincePeak/30)`; evidence = `min(2, 1 + 0.5·log10(attempts/8))` (8 → 1×, 80 → 1.5×, 800+ → 2×). Inconsistency = `min(1, cv/0.5)` where `cv = stddev(burst)/mean(burst)` — needs `burstSqSum` so we can compute variance from running totals; gated by `burstCount ≥ 4`. Char affinity is the mean normalized substitution weight across an item's alpha chars; bypasses all multipliers so bad-key composition can pull an item into the pool by itself.
 - Query returns all qualifying items (score > 0), sorted by score descending; long tail is naturally low-probability via score-weighted sampling.
+- About 10% of eligible scored struggle items are deterministically assigned to `holdoutWords`/`holdoutBiwords` by stable hash and excluded from targeted struggle pools. Holdout items can still appear through filler or normal tests.
 - Session pool is built by score-weighted sampling with replacement: `focusedPracticeWordCount` total words, split evenly between words and biwords for the practice fraction, with filler words filling the remainder at probability `focusedPracticeFillerProbability`. Session limit equals word count exactly.
 - Retention interleaving: graduated items (those that previously hit `peakMissRate ≥ 10%` and are now `< 5%`) are returned alongside struggle items in `retentionWords`/`retentionBiwords` with score = peakMissRate. Frontend allocates 10% of word/biword practice slots to retention (or all slots if no struggle items exist). When no graduated items exist, retention quota collapses and full quota goes to struggle. Lets us test retention without re-creating struggle.
 - Entry points are the global commandline `Focused practice` command and the existing result-screen practice command subgroup as `focused`.
 - The global entry point is always visible and always starts a session. If there's no qualifying data, the session bootstraps from filler and a one-line notice is shown. Unfilled practice slots in either category backfill into filler so total session length always equals `focusedPracticeWordCount`.
 - Filler is sampled Zipf-weighted (using `zipfyRandomArrayIndex`) from the full language word list when `language.orderedByFrequency` is true; otherwise uniform over the first 100 words as a fallback.
 - Generator coverage verifies API error handling, filler bootstrap, score-weighted exposure, retention/struggle slot allocation, filler backfill, and a deterministic simulation where focused text reduces synthetic weak-burden more than random filler.
+- Focused-practice generator records a seeded session plan and exposes the active session id so focused stats and saved results can be joined later.
 - Backend scoring coverage includes a mixed profile where miss, slow burst, inconsistency, and character-affinity signals outrank a stable control.
 - Collector coverage lives behind an injectable `practice-stats` helper so generated-mode gating, repeated/focused weights, punctuation/numbers/funbox guards, word aggregation, char substitutions, and target-word biwords are tested without booting the full test UI.
 - Controller/schema coverage verifies result saves update aggregates without persisting `practiceStats`, stats-only updates do not insert results, `CompletedEvent` accepts bounded practice stats, and focused-practice responses match the contract.

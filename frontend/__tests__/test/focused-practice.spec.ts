@@ -6,6 +6,7 @@ import { before as practiceBefore } from "../../src/ts/test/practise-words";
 
 const mocks = vi.hoisted(() => ({
   getPracticeStats: vi.fn(),
+  recordPracticeStatsSession: vi.fn(),
   getLanguage: vi.fn(),
   setConfig: vi.fn(),
   getData: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("../../src/ts/ape", () => ({
   default: {
     users: {
       getPracticeStats: mocks.getPracticeStats,
+      recordPracticeStatsSession: mocks.recordPracticeStatsSession,
     },
   },
 }));
@@ -59,6 +61,8 @@ function focusResponse(
     biwords: unknown[];
     retentionWords: unknown[];
     retentionBiwords: unknown[];
+    holdoutWords: unknown[];
+    holdoutBiwords: unknown[];
   }> = {},
 ): unknown {
   return {
@@ -76,6 +80,8 @@ function focusResponse(
         biwords: [],
         retentionWords: [],
         retentionBiwords: [],
+        holdoutWords: [],
+        holdoutBiwords: [],
         graduated: [],
         topSubstitutions: [],
         ...data,
@@ -140,6 +146,7 @@ describe("focused-practice", () => {
 
   it("bootstraps a full filler session when no focus data exists", async () => {
     mocks.getPracticeStats.mockResolvedValue(focusResponse());
+    mocks.recordPracticeStatsSession.mockResolvedValue({ status: 200 });
 
     await expect(FocusedPractice.init()).resolves.toBe(true);
 
@@ -157,6 +164,16 @@ describe("focused-practice", () => {
       undefined,
     );
     expect(FocusedPractice.isFocusedPracticeActive()).toBe(true);
+    expect(FocusedPractice.getActivePracticeSessionId()).toMatch(/^fp_/);
+    expect(mocks.recordPracticeStatsSession).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        source: "focused",
+        sessionId: FocusedPractice.getActivePracticeSessionId(),
+        items: expect.arrayContaining([
+          expect.objectContaining({ role: "filler" }),
+        ]),
+      }),
+    });
   });
 
   it("allocates struggle and retention slots before filler", async () => {
@@ -166,6 +183,8 @@ describe("focused-practice", () => {
         biwords: [item("very weak", "biword")],
         retentionWords: [item("kept", "word")],
         retentionBiwords: [item("still kept", "biword")],
+        holdoutWords: [item("withheld", "word")],
+        holdoutBiwords: [item("still withheld", "biword")],
       }),
     );
 
@@ -183,6 +202,41 @@ describe("focused-practice", () => {
       "very weak",
       "still kept",
     ]);
+    expect(mocks.recordPracticeStatsSession).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        items: expect.arrayContaining([
+          expect.objectContaining({ key: "weak", role: "struggle" }),
+          expect.objectContaining({ key: "kept", role: "retention" }),
+          expect.objectContaining({ key: "withheld", role: "holdout" }),
+        ]),
+      }),
+    });
+  });
+
+  it("builds deterministic practice text and excludes holdout from selected text", () => {
+    const options = {
+      words: [item("weak", "word", 9), item("low", "word", 1)],
+      biwords: [],
+      retentionWords: [],
+      retentionBiwords: [],
+      holdoutWords: [item("withheld", "word", 10)],
+      holdoutBiwords: [],
+      targetLength: 10,
+      fillerProbability: 0,
+      seed: 123,
+      pickFiller: () => "fill",
+    };
+
+    const first = FocusedPractice.buildFocusedPracticeSession(options);
+    const second = FocusedPractice.buildFocusedPracticeSession(options);
+
+    expect(first.text).toEqual(second.text);
+    expect(first.text).not.toContain("withheld");
+    expect(first.planItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "withheld", role: "holdout" }),
+      ]),
+    );
   });
 
   it("builds practice text with more exposure for higher-score items", () => {
@@ -191,6 +245,8 @@ describe("focused-practice", () => {
       biwords: [],
       retentionWords: [],
       retentionBiwords: [],
+      holdoutWords: [],
+      holdoutBiwords: [],
       targetLength: 20,
       fillerProbability: 0,
       rng: () => 0.5,
@@ -207,6 +263,8 @@ describe("focused-practice", () => {
       biwords: [],
       retentionWords: [item("kept", "word")],
       retentionBiwords: [],
+      holdoutWords: [],
+      holdoutBiwords: [],
       targetLength: 10,
       fillerProbability: 0,
       rng: () => 0,
@@ -239,6 +297,8 @@ describe("focused-practice", () => {
       biwords: [item("common", "biword", 1)],
       retentionWords: [],
       retentionBiwords: [],
+      holdoutWords: [],
+      holdoutBiwords: [],
       targetLength: 10,
       fillerProbability: 0,
       rng: () => 0,

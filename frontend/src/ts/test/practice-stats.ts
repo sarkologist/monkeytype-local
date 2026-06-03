@@ -17,6 +17,7 @@ export type PracticeStatsConfig = Pick<
 type BuildPracticeStatsOptions = {
   config: PracticeStatsConfig;
   focusedPracticeActive: boolean;
+  focusedPracticeSessionId: string | undefined;
   isRepeated: boolean;
   hasWordMutatingFunbox: boolean;
   typedWords: readonly string[];
@@ -88,6 +89,7 @@ function collectCharSubstitutions(
 export function buildPracticeStats({
   config,
   focusedPracticeActive,
+  focusedPracticeSessionId,
   isRepeated,
   hasWordMutatingFunbox,
   typedWords,
@@ -98,6 +100,7 @@ export function buildPracticeStats({
   if (focusedPracticeActive) {
     if (config.mode !== "custom") return undefined;
     if (config.focusedPracticeWeight <= 0) return undefined;
+    if (focusedPracticeSessionId === undefined) return undefined;
   } else {
     if (!["time", "words"].includes(config.mode)) return undefined;
   }
@@ -132,11 +135,18 @@ export function buildPracticeStats({
   });
 
   const practiceStats: CompletedEventPracticeStats = {
-    source: "generated",
+    source: focusedPracticeActive
+      ? "focused"
+      : isRepeated
+        ? "repeated"
+        : "generated",
     language: config.language,
     words: [...words.values()].slice(0, 200),
     biwords: [...biwords.values()].slice(0, 200),
   };
+  if (focusedPracticeActive) {
+    practiceStats.practiceSessionId = focusedPracticeSessionId;
+  }
   if (chars.size > 0) {
     practiceStats.chars = [...chars.values()].slice(0, 200);
   }

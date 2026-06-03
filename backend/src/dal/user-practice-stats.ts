@@ -1,6 +1,9 @@
 import { Collection, ObjectId } from "mongodb";
 import * as db from "../init/db";
-import { CompletedEventPracticeStats } from "@monkeytype/schemas/results";
+import type {
+  CompletedEventPracticeStats,
+  PracticeStatsSource,
+} from "@monkeytype/schemas/results";
 import { Language } from "@monkeytype/schemas/languages";
 import * as PracticeSnapshotsDAL from "./user-practice-snapshots";
 import * as CharSubstitutionsDAL from "./user-char-substitutions";
@@ -22,6 +25,20 @@ export type UserPracticeStat = {
   decayedAt: number;
   peakMissRate?: number;
   peakMissRateAt?: number;
+};
+
+export type UserPracticeSourceStat = UserPracticeStat & {
+  source: PracticeStatsSource;
+};
+
+type PracticeStatDocument = UserPracticeStat | UserPracticeSourceStat;
+
+type PracticeStatFilter = {
+  uid: string;
+  language: Language;
+  source?: PracticeStatsSource;
+  type: PracticeStatType;
+  key: string;
 };
 
 export type ScoreBreakdown = {
@@ -59,6 +76,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const getCollection = (): Collection<UserPracticeStat> =>
   db.collection<UserPracticeStat>("userPracticeStats");
 
+export const getSourceCollection = (): Collection<UserPracticeSourceStat> =>
+  db.collection<UserPracticeSourceStat>("userPracticeSourceStats");
+
 function decayValue(value: number, decayedAt: number, now: number): number {
   const days = Math.max(0, now - decayedAt) / DAY_MS;
   return value * Math.pow(0.5, days / HALF_LIFE_DAYS);
@@ -83,7 +103,42 @@ async function updateEntry(
   now: number,
 ): Promise<void> {
   const filter = { uid, language, type, key: entry.key };
-  const existing = await getCollection().findOne(filter);
+  await updateEntryInCollection(
+    getCollection() as unknown as Collection<PracticeStatDocument>,
+    filter,
+    entry,
+    weight,
+    now,
+  );
+}
+
+async function updateSourceEntry(
+  uid: string,
+  language: Language,
+  source: PracticeStatsSource,
+  type: PracticeStatType,
+  entry: CompletedEventPracticeStats["words"][number],
+  weight: number,
+  now: number,
+): Promise<void> {
+  const filter = { uid, language, source, type, key: entry.key };
+  await updateEntryInCollection(
+    getSourceCollection() as unknown as Collection<PracticeStatDocument>,
+    filter,
+    entry,
+    weight,
+    now,
+  );
+}
+
+async function updateEntryInCollection(
+  collection: Collection<PracticeStatDocument>,
+  filter: PracticeStatFilter,
+  entry: CompletedEventPracticeStats["words"][number],
+  weight: number,
+  now: number,
+): Promise<void> {
+  const existing = await collection.findOne(filter);
   const weighted = {
     attempts: entry.attempts * weight,
     misses: entry.misses * weight,
@@ -100,7 +155,7 @@ async function updateEntry(
       attempts >= PEAK_MIN_ATTEMPTS
         ? { peakMissRate: roundStat(missRate), peakMissRateAt: now }
         : {};
-    await getCollection().insertOne({
+    await collection.insertOne({
       _id: new ObjectId(),
       ...filter,
       attempts,
@@ -111,7 +166,7 @@ async function updateEntry(
       lastSeen: now,
       decayedAt: now,
       ...peak,
-    });
+    } as PracticeStatDocument);
     return;
   }
 
@@ -131,7 +186,7 @@ async function updateEntry(
     peakUpdate.peakMissRateAt = now;
   }
 
-  await getCollection().updateOne(filter, {
+  await collection.updateOne(filter, {
     $set: {
       attempts: newAttempts,
       misses: newMisses,
@@ -163,15 +218,37 @@ export async function updateStats(
     { uid: 1, language: 1, type: 1, key: 1 },
     { unique: true },
   );
+  await getSourceCollection().createIndex(
+    { uid: 1, language: 1, source: 1, type: 1, key: 1 },
+    { unique: true },
+  );
   const weight = clampWeight(practiceStats.weight);
 
   for (const entry of practiceStats.words) {
     await updateEntry(uid, practiceStats.language, "word", entry, weight, now);
+    await updateSourceEntry(
+      uid,
+      practiceStats.language,
+      practiceStats.source,
+      "word",
+      entry,
+      weight,
+      now,
+    );
   }
   for (const entry of practiceStats.biwords) {
     await updateEntry(
       uid,
       practiceStats.language,
+      "biword",
+      entry,
+      weight,
+      now,
+    );
+    await updateSourceEntry(
+      uid,
+      practiceStats.language,
+      practiceStats.source,
       "biword",
       entry,
       weight,
@@ -315,6 +392,8 @@ type PracticeStatsSummary = {
 const GRADUATED_PEAK_THRESHOLD = 0.1;
 const GRADUATED_CURRENT_THRESHOLD = 0.05;
 const GRADUATED_MIN_ATTEMPTS = 5;
+const HOLDOUT_RATIO = 0.1;
+const HOLDOUT_MIN_ITEMS = 10;
 
 type DecayedStat = UserPracticeStat & {
   attempts: number;
@@ -397,6 +476,46 @@ function isGraduated(stat: DecayedStat): boolean {
   return currentMissRate < GRADUATED_CURRENT_THRESHOLD;
 }
 
+function itemId(item: { type: PracticeStatType; key: string }): string {
+  return `${item.type}:${item.key}`;
+}
+
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function partitionHoldout(
+  uid: string,
+  language: Language,
+  items: FocusItem[],
+): { practice: FocusItem[]; holdout: FocusItem[] } {
+  if (items.length < HOLDOUT_MIN_ITEMS) {
+    return { practice: items, holdout: [] };
+  }
+
+  const holdoutCount = Math.max(1, Math.round(items.length * HOLDOUT_RATIO));
+  const holdoutIds = new Set(
+    items
+      .map((item) => ({
+        id: itemId(item),
+        hash: stableHash(`${uid}:${language}:${item.type}:${item.key}`),
+      }))
+      .sort((a, b) => a.hash - b.hash)
+      .slice(0, holdoutCount)
+      .map((item) => item.id),
+  );
+
+  return {
+    practice: items.filter((item) => !holdoutIds.has(itemId(item))),
+    holdout: items.filter((item) => holdoutIds.has(itemId(item))),
+  };
+}
+
 export async function getFocusItems(
   uid: string,
   language: Language,
@@ -407,6 +526,8 @@ export async function getFocusItems(
   biwords: FocusItem[];
   retentionWords: FocusItem[];
   retentionBiwords: FocusItem[];
+  holdoutWords: FocusItem[];
+  holdoutBiwords: FocusItem[];
   graduated: GraduatedItem[];
   topSubstitutions: CharSubstitutionsDAL.TopSubstitution[];
 }> {
@@ -422,12 +543,22 @@ export async function getFocusItems(
       now,
     );
 
+  const graduatedDecayed = decayed.filter(isGraduated);
+  const graduatedIds = new Set(graduatedDecayed.map(itemId));
   const scored = qualifyingItems
     .map((stat) => scoreItem(stat, baselineBurst, charWeights, now))
     .filter((stat) => stat.score > 0)
     .sort((a, b) => b.score - a.score);
-
-  const graduatedDecayed = decayed.filter(isGraduated);
+  const holdoutCandidates = scored.filter(
+    (stat) => !graduatedIds.has(itemId(stat)),
+  );
+  const { holdout: holdoutItems } = partitionHoldout(
+    uid,
+    language,
+    holdoutCandidates,
+  );
+  const holdoutIds = new Set(holdoutItems.map(itemId));
+  const practiceItems = scored.filter((item) => !holdoutIds.has(itemId(item)));
 
   const retentionItems: FocusItem[] = graduatedDecayed
     .map((stat) => ({
@@ -456,10 +587,12 @@ export async function getFocusItems(
 
   return {
     summary,
-    words: scored.filter((stat) => stat.type === "word"),
-    biwords: scored.filter((stat) => stat.type === "biword"),
+    words: practiceItems.filter((stat) => stat.type === "word"),
+    biwords: practiceItems.filter((stat) => stat.type === "biword"),
     retentionWords: retentionItems.filter((stat) => stat.type === "word"),
     retentionBiwords: retentionItems.filter((stat) => stat.type === "biword"),
+    holdoutWords: holdoutItems.filter((stat) => stat.type === "word"),
+    holdoutBiwords: holdoutItems.filter((stat) => stat.type === "biword"),
     graduated,
     topSubstitutions,
   };

@@ -709,6 +709,56 @@ describe("result controller test", () => {
         }),
       );
     });
+    it("should persist practice measurement markers without full stats", async () => {
+      //GIVEN
+      const practiceStats: NonNullable<CompletedEvent["practiceStats"]> = {
+        ...(buildPracticeStats() as NonNullable<
+          CompletedEvent["practiceStats"]
+        >),
+        source: "focused",
+        practiceSessionId: "session-1",
+      };
+      const completedEvent = buildCompletedEvent({
+        mode: "custom",
+        mode2: "custom",
+        customText: {
+          textLen: 50,
+          mode: "shuffle",
+          pipeDelimiter: true,
+          limit: {
+            mode: "section",
+            value: 50,
+          },
+        },
+        practiceStats,
+        practiceSource: "focused",
+        practiceSessionId: "session-1",
+      });
+
+      //WHEN
+      await mockApp
+        .post("/results")
+        .set("Authorization", `Bearer ${uid}`)
+        .send({
+          result: completedEvent,
+        })
+        .expect(200);
+
+      //THEN
+      expect(resultAddMock).toHaveBeenCalledWith(
+        uid,
+        expect.objectContaining({
+          practiceSource: "focused",
+          practiceSessionId: "session-1",
+        }),
+      );
+      expect(resultAddMock).toHaveBeenCalledWith(
+        uid,
+        expect.not.objectContaining({
+          practiceStats: expect.anything(),
+        }),
+      );
+    });
     it("should fail if result saving is disabled", async () => {
       //GIVEN
       await enableResultsSaving(false);

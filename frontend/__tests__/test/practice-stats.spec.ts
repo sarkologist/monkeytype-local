@@ -20,6 +20,7 @@ function build(
   return buildPracticeStats({
     config: baseConfig,
     focusedPracticeActive: false,
+    focusedPracticeSessionId: undefined,
     isRepeated: false,
     hasWordMutatingFunbox: false,
     typedWords: ["alpha", "beta"],
@@ -43,6 +44,7 @@ describe("practice stats collector", () => {
       build({
         config: { ...baseConfig, mode: "custom" },
         focusedPracticeActive: true,
+        focusedPracticeSessionId: "session-1",
       })?.weight,
     ).toBe(baseConfig.focusedPracticeWeight);
   });
@@ -51,6 +53,7 @@ describe("practice stats collector", () => {
     expect(build({ isRepeated: true })?.weight).toBe(
       baseConfig.focusedPracticeRepeatedTestWeight,
     );
+    expect(build({ isRepeated: true })?.source).toBe("repeated");
   });
 
   it("skips repeated generated stats when repeated-test weight is zero", () => {
@@ -72,12 +75,28 @@ describe("practice stats collector", () => {
   });
 
   it("emits focused-practice stats with focused-practice weight", () => {
+    const stats = build({
+      config: { ...baseConfig, mode: "custom" },
+      focusedPracticeActive: true,
+      focusedPracticeSessionId: "session-1",
+    });
+
+    expect(stats?.weight).toBe(baseConfig.focusedPracticeWeight);
+    expect(stats?.source).toBe("focused");
+    expect(stats?.practiceSessionId).toBe("session-1");
+  });
+
+  it("emits generated stats source for normal generated tests", () => {
+    expect(build()?.source).toBe("generated");
+  });
+
+  it("skips focused-practice stats without a session id", () => {
     expect(
       build({
         config: { ...baseConfig, mode: "custom" },
         focusedPracticeActive: true,
-      })?.weight,
-    ).toBe(baseConfig.focusedPracticeWeight);
+      }),
+    ).toBeUndefined();
   });
 
   it("skips focused-practice stats when focused-practice weight is zero", () => {

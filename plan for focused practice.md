@@ -28,6 +28,7 @@ Core feature shipped. See code for design details; this doc tracks what's pendin
 - Focused-practice generator coverage — API error path, filler bootstrap, and retention/struggle slot allocation covered in `focused-practice.spec.ts`.
 - Focused-practice validation — selector extracted to pure helper with injected RNG/filler; tests validate score-weighted exposure, retention/filler invariants, synthetic outcome lift vs random filler, and backend mixed-signal ranking.
 - Focused-practice missing coverage — collector extracted to an injectable helper and pending frontend/backend/contract/schema tests added.
+- Focused-practice measurement improvements — explicit generated/repeated/focused sources, focused session IDs, source-specific aggregate stats, session-plan recording, deterministic 10% holdout, and local assessment script shipped.
 
 ## Pending
 
@@ -60,6 +61,7 @@ Contract/schema:
 
 - Manual QA for focused-practice stats feedback: confirm `userPracticeStats` updates with dampened increments and picks shift after sustained improvement.
 - Opportunistic pruning for tiny/old `userPracticeStats` docs (or maintenance job if collection grows).
+- Use `backend/scripts/focused-practice-assessment.ts` after enough new marked sessions exist to compare focused vs holdout lift.
 
 ## Open questions
 

@@ -47,6 +47,8 @@ export function buildDbResult(
     funbox: ce.funbox,
     numbers: ce.numbers,
     punctuation: ce.punctuation,
+    practiceSource: ce.practiceSource,
+    practiceSessionId: ce.practiceSessionId,
     isPb: isPb,
     bailedOut: ce.bailedOut,
     blindMode: ce.blindMode,
@@ -63,6 +65,8 @@ export function buildDbResult(
   if (ce.language === "english") delete res.language;
   if (!ce.numbers) delete res.numbers;
   if (!ce.punctuation) delete res.punctuation;
+  if (ce.practiceSource === undefined) delete res.practiceSource;
+  if (ce.practiceSessionId === undefined) delete res.practiceSessionId;
   if (ce.mode !== "quote") delete res.quoteLength;
   if (ce.restartCount === 0) delete res.restartCount;
   if (ce.incompleteTestSeconds === 0) delete res.incompleteTestSeconds;

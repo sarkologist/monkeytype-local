@@ -3,6 +3,7 @@ import { CompletedEventSchema } from "../src/results";
 
 function completedEvent(
   practiceStats?: unknown,
+  overrides: Record<string, unknown> = {},
 ): Parameters<typeof CompletedEventSchema.safeParse>[0] {
   return {
     acc: 95,
@@ -40,6 +41,7 @@ function completedEvent(
     wpm: 80,
     wpmConsistency: 100,
     ...(practiceStats === undefined ? {} : { practiceStats }),
+    ...overrides,
   };
 }
 
@@ -68,7 +70,8 @@ describe("CompletedEventSchema practiceStats", () => {
 
   it("accepts bounded optional practice stats", () => {
     const practiceStats = {
-      source: "generated",
+      source: "focused",
+      practiceSessionId: "practice-session-1",
       language: "english",
       weight: 0.5,
       words: Array.from({ length: 200 }, (_, index) => entry(index)),
@@ -86,6 +89,50 @@ describe("CompletedEventSchema practiceStats", () => {
     expect(
       CompletedEventSchema.safeParse(completedEvent(practiceStats)).success,
     ).toBe(true);
+  });
+
+  it("accepts practice measurement result markers", () => {
+    const practiceStats = {
+      source: "focused",
+      practiceSessionId: "practice-session-1",
+      language: "english",
+      words: [],
+      biwords: [],
+    };
+
+    expect(
+      CompletedEventSchema.safeParse(
+        completedEvent(practiceStats, {
+          practiceSource: "focused",
+          practiceSessionId: "practice-session-1",
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it("rejects malformed practice measurement markers", () => {
+    expect(
+      CompletedEventSchema.safeParse(
+        completedEvent(undefined, {
+          practiceSource: "generated",
+          practiceSessionId: "",
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("accepts generated, repeated, and focused practice stats sources", () => {
+    for (const source of ["generated", "repeated", "focused"]) {
+      const practiceStats = {
+        source,
+        language: "english",
+        words: [],
+        biwords: [],
+      };
+      expect(
+        CompletedEventSchema.safeParse(completedEvent(practiceStats)).success,
+      ).toBe(true);
+    }
   });
 
   it("rejects unbounded practice stats payloads", () => {

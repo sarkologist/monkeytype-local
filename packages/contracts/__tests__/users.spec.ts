@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { GetPracticeStatsResponseSchema } from "../src/users";
+import {
+  GetPracticeStatsResponseSchema,
+  RecordPracticeStatsSessionRequestSchema,
+} from "../src/users";
 
 describe("GetPracticeStatsResponseSchema", () => {
   it("validates the focused-practice response shape", () => {
@@ -51,6 +54,16 @@ describe("GetPracticeStatsResponseSchema", () => {
           },
         ],
         retentionBiwords: [],
+        holdoutWords: [
+          {
+            key: "withheld",
+            type: "word",
+            attempts: 12,
+            misses: 6,
+            score: 0.5,
+          },
+        ],
+        holdoutBiwords: [],
         graduated: [
           {
             key: "better",
@@ -89,6 +102,8 @@ describe("GetPracticeStatsResponseSchema", () => {
         biwords: [],
         retentionWords: [],
         retentionBiwords: [],
+        holdoutWords: [],
+        holdoutBiwords: [],
         graduated: [],
         topSubstitutions: [],
       },
@@ -97,5 +112,44 @@ describe("GetPracticeStatsResponseSchema", () => {
     expect(GetPracticeStatsResponseSchema.safeParse(response).success).toBe(
       false,
     );
+  });
+});
+
+describe("RecordPracticeStatsSessionRequestSchema", () => {
+  it("validates focused-practice session plans", () => {
+    const response = {
+      sessionId: "session_123",
+      language: "english",
+      source: "focused",
+      seed: 123,
+      config: {
+        wordCount: 50,
+        fillerProbability: 0.3,
+      },
+      items: [
+        {
+          key: "about",
+          type: "word",
+          role: "struggle",
+          score: 0.5,
+          attempts: 8,
+          misses: 4,
+          count: 2,
+        },
+        {
+          key: "withheld",
+          type: "word",
+          role: "holdout",
+          score: 0.4,
+          attempts: 8,
+          misses: 4,
+          count: 0,
+        },
+      ],
+    };
+
+    expect(
+      RecordPracticeStatsSessionRequestSchema.safeParse(response).success,
+    ).toBe(true);
   });
 });

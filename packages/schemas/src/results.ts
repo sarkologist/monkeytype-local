@@ -77,8 +77,22 @@ export type PracticeCharSubstitution = z.infer<
   typeof PracticeCharSubstitutionSchema
 >;
 
+export const PracticeStatsSourceSchema = z.enum([
+  "generated",
+  "repeated",
+  "focused",
+]);
+export type PracticeStatsSource = z.infer<typeof PracticeStatsSourceSchema>;
+
+const PracticeSessionIdSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .regex(/^[a-zA-Z0-9_-]+$/);
+
 export const CompletedEventPracticeStatsSchema = z.object({
-  source: z.literal("generated"),
+  source: PracticeStatsSourceSchema,
+  practiceSessionId: PracticeSessionIdSchema.optional(),
   language: LanguageSchema,
   weight: z.number().nonnegative().optional(),
   words: z.array(PracticeStatEntrySchema).max(200),
@@ -116,6 +130,8 @@ const ResultBaseSchema = z.object({
   restartCount: z.number().int().nonnegative().optional(),
   incompleteTestSeconds: z.number().nonnegative().optional(),
   afkDuration: z.number().nonnegative().optional(),
+  practiceSource: z.literal("focused").optional(),
+  practiceSessionId: PracticeSessionIdSchema.optional(),
   tags: z.array(IdSchema).optional(),
   bailedOut: z.boolean().optional(),
   blindMode: z.boolean().optional(),
@@ -179,6 +195,8 @@ export const CompletedEventSchema = ResultBaseSchema.required({
     stopOnLetter: z.boolean(),
     incompleteTests: z.array(IncompleteTestSchema),
     practiceStats: CompletedEventPracticeStatsSchema.optional(),
+    practiceSource: z.literal("focused").optional(),
+    practiceSessionId: PracticeSessionIdSchema.optional(),
   })
   .strict();
 

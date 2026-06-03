@@ -18,6 +18,7 @@ import * as PresetDal from "../../../src/dal/preset";
 import * as ConfigDal from "../../../src/dal/config";
 import * as ResultDal from "../../../src/dal/result";
 import * as UserPracticeStatsDal from "../../../src/dal/user-practice-stats";
+import * as UserPracticeSessionsDal from "../../../src/dal/user-practice-sessions";
 import * as ReportDal from "../../../src/dal/report";
 import * as DailyLeaderboards from "../../../src/utils/daily-leaderboards";
 import * as LeaderboardDal from "../../../src/dal/leaderboards";
@@ -2732,12 +2733,19 @@ describe("user controller test", () => {
       UserPracticeStatsDal,
       "updateStats",
     );
+    const recordPracticeSessionMock = vi.spyOn(
+      UserPracticeSessionsDal,
+      "recordSession",
+    );
     const resultAddMock = vi.spyOn(ResultDal, "addResult");
 
     beforeEach(() => {
-      [getFocusItemsMock, updatePracticeStatsMock, resultAddMock].forEach(
-        (it) => it.mockClear(),
-      );
+      [
+        getFocusItemsMock,
+        updatePracticeStatsMock,
+        recordPracticeSessionMock,
+        resultAddMock,
+      ].forEach((it) => it.mockClear());
       getFocusItemsMock.mockResolvedValue({
         summary: {
           totalWords: 0,
@@ -2750,10 +2758,13 @@ describe("user controller test", () => {
         biwords: [],
         retentionWords: [],
         retentionBiwords: [],
+        holdoutWords: [],
+        holdoutBiwords: [],
         graduated: [],
         topSubstitutions: [],
       });
       updatePracticeStatsMock.mockResolvedValue();
+      recordPracticeSessionMock.mockResolvedValue();
     });
 
     it("should get focused practice stats", async () => {
@@ -2808,6 +2819,46 @@ describe("user controller test", () => {
       expect(body.message).toEqual("Practice stats updated");
       expect(updatePracticeStatsMock).toHaveBeenCalledWith(uid, practiceStats);
       expect(resultAddMock).not.toHaveBeenCalled();
+    });
+
+    it("should record focused practice sessions", async () => {
+      //GIVEN
+      const session = {
+        sessionId: "session-1",
+        language: "english",
+        source: "focused",
+        seed: 123,
+        config: {
+          wordCount: 50,
+          fillerProbability: 0.3,
+        },
+        items: [
+          {
+            key: "about",
+            type: "word",
+            role: "struggle",
+            score: 0.5,
+            attempts: 8,
+            misses: 4,
+            count: 2,
+          },
+        ],
+      };
+
+      //WHEN
+      const { body } = await mockApp
+        .post("/users/practiceStats/session")
+        .set("Authorization", `Bearer ${uid}`)
+        .send(session)
+        .expect(200);
+
+      //THEN
+      expect(body.message).toEqual("Practice stats session recorded");
+      expect(recordPracticeSessionMock).toHaveBeenCalledWith(
+        uid,
+        session,
+        expect.any(Number),
+      );
     });
   });
   describe("get favorite quotes", () => {

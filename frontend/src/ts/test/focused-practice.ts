@@ -8,13 +8,17 @@ import {
   showNoticeNotification,
 } from "../states/notifications";
 import { setCustomTextName } from "../legacy-states/custom-text-name";
-import type { FocusItem } from "@monkeytype/contracts/users";
+import type {
+  FocusItem,
+  PracticeStatsSessionItem,
+} from "@monkeytype/contracts/users";
 import { before } from "./practise-words";
 import { configEvent } from "../events/config";
 import { restartTestEvent } from "../events/test";
 import { zipfyRandomArrayIndex } from "../utils/misc";
 
 let focusedPracticeActive = false;
+let activePracticeSessionId: string | undefined;
 
 const RETENTION_RATIO = 0.1;
 
@@ -23,11 +27,14 @@ type FocusedPracticeItems = {
   biwords: FocusItem[];
   retentionWords: FocusItem[];
   retentionBiwords: FocusItem[];
+  holdoutWords: FocusItem[];
+  holdoutBiwords: FocusItem[];
 };
 
 type BuildFocusedPracticeTextOptions = FocusedPracticeItems & {
   targetLength: number;
   fillerProbability: number;
+  seed?: number;
   rng?: () => number;
   pickFiller: () => string;
 };
@@ -47,15 +54,26 @@ function allocateSlots(
   return { struggle: totalSlots - retention, retention };
 }
 
-function sampleWeighted(
+function createSeededRng(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6d2b79f5;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function sampleWeightedItems(
   items: FocusItem[],
   count: number,
   rng: () => number,
-): string[] {
+): FocusItem[] {
   if (items.length === 0 || count === 0) return [];
   const weights = items.map((item) => Math.max(item.score, 1e-6));
   const total = weights.reduce((s, w) => s + w, 0);
-  const result: string[] = [];
+  const result: FocusItem[] = [];
   for (let i = 0; i < count; i++) {
     let r = rng() * total;
     let picked = items[items.length - 1] ?? items[0];
@@ -66,21 +84,66 @@ function sampleWeighted(
         break;
       }
     }
-    if (picked !== undefined) result.push(picked.key);
+    if (picked !== undefined) result.push(picked);
   }
   return result;
 }
 
-export function buildFocusedPracticeText({
+function planFromItems(
+  items: FocusItem[],
+  role: PracticeStatsSessionItem["role"],
+): PracticeStatsSessionItem[] {
+  const counts = new Map<string, { item: FocusItem; count: number }>();
+  for (const item of items) {
+    const existing = counts.get(`${item.type}:${item.key}`);
+    if (existing === undefined) {
+      counts.set(`${item.type}:${item.key}`, { item, count: 1 });
+    } else {
+      existing.count++;
+    }
+  }
+
+  return [...counts.values()].map(({ item, count }) => ({
+    key: item.key,
+    type: item.type,
+    role,
+    score: item.score,
+    attempts: item.attempts,
+    misses: item.misses,
+    count,
+  }));
+}
+
+function fillerPlanItems(fillers: string[]): PracticeStatsSessionItem[] {
+  const counts = new Map<string, number>();
+  for (const filler of fillers) {
+    counts.set(filler, (counts.get(filler) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([key, count]) => ({
+    key,
+    type: "word",
+    role: "filler",
+    count,
+  }));
+}
+
+export function buildFocusedPracticeSession({
   words,
   biwords,
   retentionWords,
   retentionBiwords,
+  holdoutWords,
+  holdoutBiwords,
   targetLength,
   fillerProbability,
-  rng = Math.random,
+  seed,
+  rng,
   pickFiller,
-}: BuildFocusedPracticeTextOptions): string[] {
+}: BuildFocusedPracticeTextOptions): {
+  text: string[];
+  planItems: PracticeStatsSessionItem[];
+} {
+  const sessionRng = rng ?? createSeededRng(seed ?? Date.now());
   const practiceCount = Math.round(targetLength * (1 - fillerProbability));
   let fillerCount = targetLength - practiceCount;
   const wordSlots = Math.ceil(practiceCount / 2);
@@ -97,34 +160,77 @@ export function buildFocusedPracticeText({
     biwordSlots,
   );
 
-  const sampledWords = [
-    ...sampleWeighted(words, wordAlloc.struggle, rng),
-    ...sampleWeighted(retentionWords, wordAlloc.retention, rng),
-  ];
+  const sampledStruggleWords = sampleWeightedItems(
+    words,
+    wordAlloc.struggle,
+    sessionRng,
+  );
+  const sampledRetentionWords = sampleWeightedItems(
+    retentionWords,
+    wordAlloc.retention,
+    sessionRng,
+  );
+  const sampledStruggleBiwords = sampleWeightedItems(
+    biwords,
+    biwordAlloc.struggle,
+    sessionRng,
+  );
+  const sampledRetentionBiwords = sampleWeightedItems(
+    retentionBiwords,
+    biwordAlloc.retention,
+    sessionRng,
+  );
+  const sampledWords = [...sampledStruggleWords, ...sampledRetentionWords];
   const sampledBiwords = [
-    ...sampleWeighted(biwords, biwordAlloc.struggle, rng),
-    ...sampleWeighted(retentionBiwords, biwordAlloc.retention, rng),
+    ...sampledStruggleBiwords,
+    ...sampledRetentionBiwords,
   ];
   fillerCount +=
     wordSlots - sampledWords.length + (biwordSlots - sampledBiwords.length);
+  const fillers = Array.from({ length: fillerCount }, pickFiller).filter(
+    Boolean,
+  );
 
   const pool = [
-    ...sampledWords,
-    ...sampledBiwords,
-    ...Array.from({ length: fillerCount }, pickFiller),
+    ...sampledWords.map((item) => item.key),
+    ...sampledBiwords.map((item) => item.key),
+    ...fillers,
   ].filter(Boolean);
 
   for (let i = pool.length; i < targetLength; i++) {
     const filler = pickFiller();
     if (filler === "") break;
     pool.push(filler);
+    fillers.push(filler);
   }
 
-  return pool.slice(0, targetLength);
+  return {
+    text: pool.slice(0, targetLength),
+    planItems: [
+      ...planFromItems(sampledStruggleWords, "struggle"),
+      ...planFromItems(sampledStruggleBiwords, "struggle"),
+      ...planFromItems(sampledRetentionWords, "retention"),
+      ...planFromItems(sampledRetentionBiwords, "retention"),
+      ...fillerPlanItems(fillers),
+      ...planFromItems([...holdoutWords, ...holdoutBiwords], "holdout").map(
+        (item) => ({ ...item, count: 0 }),
+      ),
+    ],
+  };
+}
+
+export function buildFocusedPracticeText(
+  options: BuildFocusedPracticeTextOptions,
+): string[] {
+  return buildFocusedPracticeSession(options).text;
 }
 
 export function isFocusedPracticeActive(): boolean {
   return focusedPracticeActive;
+}
+
+export function getActivePracticeSessionId(): string | undefined {
+  return activePracticeSessionId;
 }
 
 export async function init(): Promise<boolean> {
@@ -137,8 +243,14 @@ export async function init(): Promise<boolean> {
     return false;
   }
 
-  const { words, biwords, retentionWords, retentionBiwords } =
-    response.body.data;
+  const {
+    words,
+    biwords,
+    retentionWords,
+    retentionBiwords,
+    holdoutWords,
+    holdoutBiwords,
+  } = response.body.data;
 
   const targetLength = Config.focusedPracticeWordCount;
 
@@ -156,13 +268,18 @@ export async function init(): Promise<boolean> {
         return () => pool[Math.floor(Math.random() * pool.length)] ?? "";
       })();
 
-  const pool = buildFocusedPracticeText({
+  const seed = Math.floor(Math.random() * 2 ** 32);
+  const sessionId = `fp_${Date.now()}_${seed}`;
+  const session = buildFocusedPracticeSession({
     words,
     biwords,
     retentionWords,
     retentionBiwords,
+    holdoutWords,
+    holdoutBiwords,
     targetLength,
     fillerProbability: Config.focusedPracticeFillerProbability,
+    seed,
     pickFiller,
   });
 
@@ -173,18 +290,43 @@ export async function init(): Promise<boolean> {
 
   setConfig("mode", "custom", { nosave: true });
   CustomText.setPipeDelimiter(true);
-  CustomText.setText(pool);
+  CustomText.setText(session.text);
   CustomText.setLimitMode("section");
   CustomText.setMode("shuffle");
   CustomText.setLimitValue(targetLength);
   setCustomTextName("focused practice", undefined);
+  activePracticeSessionId = sessionId;
   focusedPracticeActive = true;
+
+  void Ape.users
+    .recordPracticeStatsSession({
+      body: {
+        sessionId,
+        language: Config.language,
+        source: "focused",
+        seed,
+        config: {
+          wordCount: targetLength,
+          fillerProbability: Config.focusedPracticeFillerProbability,
+        },
+        items: session.planItems,
+      },
+    })
+    .then((recordResponse) => {
+      if (recordResponse.status !== 200) {
+        console.log("Error recording focused practice session", recordResponse);
+      }
+    })
+    .catch((error: unknown) => {
+      console.log("Error recording focused practice session", error);
+    });
 
   return true;
 }
 
 export function reset(): void {
   focusedPracticeActive = false;
+  activePracticeSessionId = undefined;
 }
 
 configEvent.subscribe(({ key, newValue }) => {

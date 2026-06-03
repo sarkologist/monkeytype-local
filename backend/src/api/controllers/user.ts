@@ -1,6 +1,7 @@
 import * as UserDAL from "../../dal/user";
 import * as UserPracticeStatsDAL from "../../dal/user-practice-stats";
 import * as UserPracticeSnapshotsDAL from "../../dal/user-practice-snapshots";
+import * as UserPracticeSessionsDAL from "../../dal/user-practice-sessions";
 import MonkeyError, {
   getErrorMessage,
   isFirebaseError,
@@ -83,6 +84,7 @@ import {
   RemoveFavoriteQuoteRequest,
   RemoveResultFilterPresetPathParams,
   ReportUserRequest,
+  RecordPracticeStatsSessionRequest,
   SetStreakHourOffsetRequest,
   TagIdPathParams,
   UpdateEmailRequest,
@@ -875,6 +877,15 @@ export async function updatePracticeStats(
 
   await UserPracticeStatsDAL.updateStats(uid, req.body);
   return new MonkeyResponse("Practice stats updated", null);
+}
+
+export async function recordPracticeStatsSession(
+  req: MonkeyRequest<undefined, RecordPracticeStatsSessionRequest>,
+): Promise<MonkeyResponse> {
+  const { uid } = req.ctx.decodedToken;
+
+  await UserPracticeSessionsDAL.recordSession(uid, req.body, Date.now());
+  return new MonkeyResponse("Practice stats session recorded", null);
 }
 
 export async function getPracticeStatsHistory(
