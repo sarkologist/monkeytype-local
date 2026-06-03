@@ -19,6 +19,7 @@ Stats UI improvements (highest-leverage gaps from assessment):
 
 ## Done
 
+- Performed focused-practice assessment from local MongoDB (`focused practice assessment.md`): enough data for a provisional positive assessment, not causal proof; miss rate improved 16.1% to 12.4% across snapshots, current decayed miss rate is 12.1%, and weak items recovered from 24.6% peak to 17.4% current weighted miss rate.
 - Fixed practice stats result-save 422s from huge `burstSqSum`: frontend collector now ignores non-finite / ≥1000 WPM burst samples for burst aggregates while still counting attempts and misses.
 - Added focused-practice profile charts for weakness mix, attempts vs misses, score distribution, mistake heatmap, graduation progress, and retention queue. Exposed `FocusItem.breakdown` through the users contract so the profile can explain why a weak item was selected.
 - Added AGENTS policy to commit completed work.
