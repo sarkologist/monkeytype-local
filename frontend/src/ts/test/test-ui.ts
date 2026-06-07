@@ -69,6 +69,7 @@ import {
 import { getTheme } from "../states/theme";
 import { skipBreakdownEvent } from "../states/header";
 import { wordsHaveNewline } from "../states/test";
+import { shouldCenterWords } from "./words-layout";
 
 export const updateHintsPositionDebounced = Misc.debounceUntilResolved(
   updateHintsPosition,
@@ -78,6 +79,7 @@ export const updateHintsPositionDebounced = Misc.debounceUntilResolved(
 const wordsEl = qsr(".pageTest #words");
 const wordsWrapperEl = qsr(".pageTest #wordsWrapper");
 const resultWordsHistoryEl = qsr(".pageTest #resultWordsHistory");
+const centeredSingleLineClass = "centered-single-line";
 
 export let activeWordTop = 0;
 export let activeWordHeight = 0;
@@ -604,6 +606,7 @@ export async function centerActiveLine(): Promise<void> {
 
 export function updateWordsWrapperHeight(force = false): void {
   if (getActivePage() !== "test" || TestState.resultVisible) return;
+  updateCenteredSingleLineWords();
   if (!force && Config.mode !== "custom") return;
   const outOfFocusEl = document.querySelector(
     ".outOfFocusWarning",
@@ -670,6 +673,19 @@ export function updateWordsWrapperHeight(force = false): void {
   outOfFocusEl.style.maxHeight = wordHeight * 3 + "px";
 }
 
+function updateCenteredSingleLineWords(): void {
+  wordsEl.toggleClass(
+    centeredSingleLineClass,
+    shouldCenterWords({
+      mode: Config.mode,
+      tapeMode: Config.tapeMode,
+      wordsHaveNewline: wordsHaveNewline(),
+      currentTestLine,
+      wordElements: wordsEl.qsa(".word"),
+    }),
+  );
+}
+
 function updateWordsMargin(): void {
   if (Config.tapeMode !== "off") {
     wordsEl.setStyle({ marginLeft: "0" });
@@ -693,9 +709,11 @@ export function addWord(
   // because other ui parts depend on the word existing
   if (TestState.activeWordIndex === wordIndex - 1) {
     wordsEl.appendHtml(buildWordHTML(word, wordIndex));
+    updateCenteredSingleLineWords();
   } else {
     requestAnimationFrame(async () => {
       wordsEl.appendHtml(buildWordHTML(word, wordIndex));
+      updateCenteredSingleLineWords();
     });
   }
 
@@ -891,6 +909,7 @@ export async function updateWordLetters({
           "<div class='beforeNewline'></div><div class='newline'></div><div class='afterNewline'></div>",
         );
       }
+      updateCenteredSingleLineWords();
       if (Config.tapeMode !== "off") {
         void scrollTape();
       }
@@ -2001,6 +2020,7 @@ qs(".pageTest #result #wpmChart")?.on("mouseenter", () => {
 
 addEventListener("resize", () => {
   ResultWordHighlight.destroy();
+  updateWordsWrapperHeight(true);
 });
 
 qs("#wordsInput")?.on("focus", (e) => {

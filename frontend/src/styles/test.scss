@@ -198,6 +198,10 @@
   align-content: flex-start;
   user-select: none;
 
+  &.centered-single-line {
+    justify-content: center;
+  }
+
   .newline {
     width: inherit;
   }

@@ -19,6 +19,7 @@ Stats UI improvements (highest-leverage gaps from assessment):
 
 ## Done
 
+- Centered short typing text when all visible words fit on one rendered line; multi-line, tape, zen, newline, and post-line-jump tests stay left-aligned.
 - Added focused-practice measurement instrumentation: source/session IDs, source-specific aggregates, session-plan recording, deterministic 10% holdout, and a read-only local assessment script. Suggestions tracked in `focused practice improvement suggestions.md`.
 - Performed focused-practice assessment from local MongoDB (`focused practice assessment.md`): enough data for a provisional positive assessment, not causal proof; miss rate improved 16.1% to 12.4% across snapshots, current decayed miss rate is 12.1%, and weak items recovered from 24.6% peak to 17.4% current weighted miss rate.
 - Fixed practice stats result-save 422s from huge `burstSqSum`: frontend collector now ignores non-finite / ≥1000 WPM burst samples for burst aggregates while still counting attempts and misses.
